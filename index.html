@@ -249,6 +249,111 @@
     .tab-page { display: none; }
     .tab-page.active { display: block; }
     #page-checkin { padding-bottom: 80px; }
+    #page-hourly { padding-bottom: 80px; }
+
+    /* ── Hourly ── */
+    .hourly-date-header {
+      text-align: center;
+      padding: 8px 0 12px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    .hourly-date-header span {
+      color: var(--accent-light);
+      font-weight: 700;
+    }
+    .hourly-progress-mini {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 14px;
+      font-size: 12px; color: var(--text-dim);
+    }
+    .hourly-progress-mini .bar {
+      flex: 1; height: 4px; background: var(--border);
+      border-radius: 2px; overflow: hidden;
+    }
+    .hourly-progress-mini .bar-fill {
+      height: 100%; background: var(--accent-light);
+      border-radius: 2px; transition: width 0.3s;
+    }
+    .hourly-slot {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex; align-items: center; gap: 10px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .hourly-slot.done {
+      border-color: rgba(0,184,148,0.4);
+      background: rgba(0,184,148,0.06);
+    }
+    .hourly-slot.night {
+      border-color: rgba(253,203,110,0.3);
+      background: rgba(253,203,110,0.05);
+    }
+    .hourly-slot.night.done {
+      border-color: rgba(0,184,148,0.4);
+      background: rgba(0,184,148,0.06);
+    }
+    .hourly-time {
+      font-size: 13px; font-weight: 700; color: var(--accent-light);
+      min-width: 72px; text-align: center; line-height: 1.3;
+    }
+    .hourly-time .sub {
+      font-size: 10px; font-weight: 400; color: var(--text-dim);
+    }
+    .hourly-goal {
+      flex: 1; font-size: 13px; line-height: 1.4;
+      color: var(--text); cursor: pointer;
+      padding: 4px 0; border-bottom: 1px dashed transparent;
+      transition: border-color 0.2s;
+      word-break: break-all;
+    }
+    .hourly-goal.empty {
+      color: var(--text-dim);
+      font-style: italic;
+    }
+    .hourly-goal:hover { border-bottom-color: var(--border); }
+    .hourly-goal-edit {
+      flex: 1;
+    }
+    .hourly-goal-edit input {
+      width: 100%; background: var(--bg); border: 1px solid var(--accent-light);
+      border-radius: 8px; padding: 6px 10px; font-size: 13px;
+      color: var(--text); outline: none; font-family: inherit;
+    }
+    .hourly-check {
+      width: 28px; height: 28px; min-width: 28px;
+      border-radius: 50%; border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 14px; transition: all 0.2s;
+      background: transparent; color: transparent;
+    }
+    .hourly-slot.done .hourly-check {
+      background: var(--green); border-color: var(--green);
+      color: #000; font-weight: 700;
+    }
+    .hourly-divider {
+      text-align: center; padding: 12px 0 8px;
+      font-size: 11px; color: var(--text-dim);
+      letter-spacing: 1px;
+    }
+    .hourly-divider::before, .hourly-divider::after {
+      content: ' ── '; color: var(--border);
+    }
+    .hourly-actions {
+      display: flex; justify-content: flex-end; gap: 8px;
+      margin-bottom: 12px;
+    }
+    .hourly-actions button {
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--text-dim); font-size: 11px; padding: 4px 10px;
+      border-radius: 6px; cursor: pointer;
+    }
+    .hourly-actions button:active {
+      background: var(--card-hover); color: var(--accent-light);
+    }
 
     /* ── Principles Card ── */
     .principles-card {
@@ -350,7 +455,21 @@
     </div>
   </div>
 
-  <!-- 第二页：打卡 -->
+  <!-- 第二页：每小时打卡 -->
+  <div class="tab-page" id="page-hourly">
+    <div class="hourly-date-header" id="hourlyDateHeader"></div>
+    <div class="hourly-progress-mini">
+      <span id="hourlyProgressLabel">0/19</span>
+      <div class="bar"><div class="bar-fill" id="hourlyProgressBar" style="width:0%"></div></div>
+    </div>
+    <div class="hourly-actions">
+      <button onclick="clearAllHourly()">🔄 清空今日</button>
+      <button onclick="copyYesterdayHourly()">📋 复制昨日</button>
+    </div>
+    <div id="hourlySlots"></div>
+  </div>
+
+  <!-- 第三页：打卡 -->
   <div class="tab-page" id="page-checkin">
     <!-- 进度条 -->
     <div class="progress-wrap">
@@ -384,6 +503,9 @@
   <div class="tab-bar">
     <button class="tab-btn active" onclick="switchTab('home')">
       <span class="tab-icon">🏠</span>首页
+    </button>
+    <button class="tab-btn" onclick="switchTab('hourly')">
+      <span class="tab-icon">⏰</span>时刻
     </button>
     <button class="tab-btn" onclick="switchTab('checkin')">
       <span class="tab-icon">✅</span>打卡
@@ -679,6 +801,7 @@
       document.querySelector(`.tab-btn[onclick="switchTab('${tab}')"]`).classList.add('active');
       updateHeader(tab);
       if (tab === 'home') renderCalendar();
+      if (tab === 'hourly') renderHourly();
     }
 
     // 日历翻月
@@ -694,7 +817,154 @@
       renderCalGrid();
     });
 
-    // ============ 倒计时 & Header切换 ============
+    // ============ 每小时打卡 ============
+    const HOURLY_KEY = 'monthly_hourly_data';
+
+    const WORK_SLOTS = [
+      { id:'s1',  time:'06:30', end:'07:30', label:'06:30-07:30' },
+      { id:'s2',  time:'07:30', end:'08:30', label:'07:30-08:30' },
+      { id:'s3',  time:'08:30', end:'09:30', label:'08:30-09:30' },
+      { id:'s4',  time:'09:30', end:'10:30', label:'09:30-10:30' },
+      { id:'s5',  time:'10:30', end:'11:30', label:'10:30-11:30' },
+      { id:'s6',  time:'11:30', end:'12:30', label:'11:30-12:30' },
+      { id:'s7',  time:'12:30', end:'13:30', label:'12:30-13:30' },
+      { id:'s8',  time:'13:30', end:'14:30', label:'13:30-14:30' },
+      { id:'s9',  time:'14:30', end:'15:30', label:'14:30-15:30' },
+      { id:'s10', time:'15:30', end:'16:30', label:'15:30-16:30' },
+      { id:'s11', time:'16:30', end:'17:30', label:'16:30-17:30' },
+      { id:'s12', time:'17:30', end:'18:30', label:'17:30-18:30' },
+      { id:'s13', time:'18:30', end:'19:30', label:'18:30-19:30' },
+      { id:'s14', time:'19:30', end:'20:30', label:'19:30-20:30' },
+      { id:'s15', time:'20:30', end:'21:30', label:'20:30-21:30' },
+    ];
+
+    const NIGHT_SLOTS = [
+      { id:'n1', time:'21:30', end:'22:00', label:'21:30-22:00', goal:'🌙 自由活动，放松休息' },
+      { id:'n2', time:'22:00', end:'22:30', label:'22:00-22:30', goal:'🛏️ 躺在床上，准备入睡' },
+      { id:'n3', time:'22:30', end:'06:30', label:'22:30前入睡', goal:'😴 入睡，确保充足睡眠' },
+      { id:'n4', time:'06:30', end:'—', label:'06:30起床', goal:'⏰ 早起，开始新的一天' },
+    ];
+
+    function loadHourly() {
+      try { var r = localStorage.getItem(HOURLY_KEY); return r ? JSON.parse(r) : {}; }
+      catch { return {}; }
+    }
+    function saveHourly(data) { localStorage.setItem(HOURLY_KEY, JSON.stringify(data)); }
+    function getTodayHourly() {
+      var d = loadHourly();
+      var t = getToday();
+      if (!d[t]) d[t] = { goals: {}, done: {} };
+      return d[t];
+    }
+
+    function setHourlyGoal(slotId, goal) {
+      var d = loadHourly();
+      var t = getToday();
+      if (!d[t]) d[t] = { goals: {}, done: {} };
+      d[t].goals[slotId] = goal;
+      saveHourly(d);
+    }
+
+    function toggleHourlyDone(slotId) {
+      var d = loadHourly();
+      var t = getToday();
+      if (!d[t]) d[t] = { goals: {}, done: {} };
+      d[t].done[slotId] = !d[t].done[slotId];
+      saveHourly(d);
+      renderHourly();
+    }
+
+    function clearAllHourly() {
+      if (!confirm('确定清空今日所有时刻目标和完成状态？')) return;
+      var d = loadHourly();
+      d[getToday()] = { goals: {}, done: {} };
+      saveHourly(d);
+      renderHourly();
+    }
+
+    function copyYesterdayHourly() {
+      var d = loadHourly();
+      var yesterday = new Date(Date.now() - 86400000);
+      var yk = yesterday.getFullYear()+'-'+String(yesterday.getMonth()+1).padStart(2,'0')+'-'+String(yesterday.getDate()).padStart(2,'0');
+      if (!d[yk] || Object.keys(d[yk].goals||{}).length === 0) {
+        alert('昨日无数据可复制');
+        return;
+      }
+      d[getToday()] = { goals: Object.assign({}, d[yk].goals), done: {} };
+      saveHourly(d);
+      renderHourly();
+    }
+
+    var hourlyEditingSlot = null;
+
+    function startEditHourly(slotId, currentGoal) {
+      hourlyEditingSlot = slotId;
+      renderHourly();
+      var inp = document.getElementById('hourlyEditInput');
+      if (inp) { inp.value = currentGoal || ''; setTimeout(function(){ inp.focus(); }, 100); }
+    }
+
+    function saveEditHourly(slotId) {
+      var inp = document.getElementById('hourlyEditInput');
+      var goal = inp ? inp.value.trim() : '';
+      setHourlyGoal(slotId, goal);
+      hourlyEditingSlot = null;
+      renderHourly();
+    }
+
+    function cancelEditHourly() {
+      hourlyEditingSlot = null;
+      renderHourly();
+    }
+
+    function renderHourly() {
+      var today = getTodayHourly();
+      var dateEl = document.getElementById('hourlyDateHeader');
+      var now = new Date();
+      var weekDays = ['日','一','二','三','四','五','六'];
+      dateEl.innerHTML = '📅 <span>' + now.getFullYear()+'.'+(now.getMonth()+1)+'.'+now.getDate()+' 周'+weekDays[now.getDay()]+'</span>';
+
+      var html = '';
+      var total = WORK_SLOTS.length + NIGHT_SLOTS.length;
+      var doneCount = 0;
+
+      // 工作时段
+      WORK_SLOTS.forEach(function(s) {
+        var goal = today.goals[s.id] || '';
+        var isDone = !!today.done[s.id];
+        var isEditing = hourlyEditingSlot === s.id;
+        if (isDone) doneCount++;
+
+        html += '<div class="hourly-slot' + (isDone ? ' done' : '') + '">';
+        html += '<div class="hourly-time">' + s.time + '<div class="sub">45+15</div></div>';
+        if (isEditing) {
+          html += '<div class="hourly-goal-edit"><input id="hourlyEditInput" placeholder="输入目标..." onkeydown="if(event.key===\'Enter\')saveEditHourly(\''+s.id+'\');if(event.key===\'Escape\')cancelEditHourly();" onblur="saveEditHourly(\''+s.id+'\')"></div>';
+        } else {
+          html += '<div class="hourly-goal' + (goal ? '' : ' empty') + '" onclick="startEditHourly(\''+s.id+'\',\'' + (goal||'').replace(/'/g,"\\'") + '\')">' + (goal || '点击设置目标...') + '</div>';
+        }
+        html += '<div class="hourly-check" onclick="toggleHourlyDone(\''+s.id+'\')">✓</div>';
+        html += '</div>';
+      });
+
+      html += '<div class="hourly-divider">🌙 晚间</div>';
+
+      // 晚间时段
+      NIGHT_SLOTS.forEach(function(s) {
+        var goal = today.goals[s.id] || s.goal;
+        var isDone = !!today.done[s.id];
+        if (isDone) doneCount++;
+
+        html += '<div class="hourly-slot night' + (isDone ? ' done' : '') + '">';
+        html += '<div class="hourly-time">' + s.time + '</div>';
+        html += '<div class="hourly-goal' + (goal ? '' : ' empty') + '">' + (goal || '点击设置目标...') + '</div>';
+        html += '<div class="hourly-check" onclick="toggleHourlyDone(\''+s.id+'\')">✓</div>';
+        html += '</div>';
+      });
+
+      document.getElementById('hourlySlots').innerHTML = html;
+      document.getElementById('hourlyProgressLabel').textContent = doneCount + '/' + total;
+      document.getElementById('hourlyProgressBar').style.width = (doneCount/total*100) + '%';
+    }
     const CYCLE_END = new Date(2026, 6, 12);
 
     function updateHeader(tab) {
@@ -711,6 +981,11 @@
         }
         title.style.cssText = 'font-size:28px;font-weight:900;color:#fff;letter-spacing:-1px;';
         date.textContent = '本月目标倒计时';
+      } else if (tab === 'hourly') {
+        title.innerHTML = '⏰ 时刻';
+        title.style.cssText = '';
+        var d = new Date();
+        date.textContent = d.getFullYear() + '.' + (d.getMonth()+1) + '.' + d.getDate() + ' ' + ['日','一','二','三','四','五','六'][d.getDay()];
       } else {
         title.innerHTML = '🎯 月度打卡';
         title.style.cssText = '';
