@@ -468,6 +468,15 @@
       border-bottom: 1px solid rgba(255,255,255,0.04);
     }
     .principle-item:last-child { border-bottom: none; }
+    .principle-item.first-principle {
+      font-size: 14px; font-weight: 700;
+      color: #ff7675; background: rgba(255,118,117,0.08);
+      border-radius: 8px; padding: 8px 10px; margin-bottom: 4px;
+      border-bottom: none;
+    }
+    .principle-item.first-principle .principle-num {
+      color: #ff7675;
+    }
     .principle-num {
       color: var(--accent-light); font-weight: 700; font-size: 12px;
       min-width: 18px;
@@ -651,7 +660,7 @@
 
     // ============ 原则数据 ============
     const PRINCIPLES = [
-      '再不努力老家房子是别人的了！',
+      '你再不努力老家房子就被别人扒了！',
       '好习惯大于一切',
       '每小时有具体产出',
       '进入心流，保持专注',
@@ -926,7 +935,7 @@
     function renderPrinciples() {
       const el = document.getElementById('principlesList');
       el.innerHTML = PRINCIPLES.map((p, i) =>
-        `<div class="principle-item"><span class="principle-num">${i+1}.</span><span>${p}</span></div>`
+        `<div class="principle-item${i===0?' first-principle':''}"><span class="principle-num">${i+1}.</span><span>${p}</span></div>`
       ).join('');
     }
 
