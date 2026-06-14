@@ -627,6 +627,7 @@
     var homeLocked = true;
     var homeLockSeconds = 5;
     var homeLockInterval = null;
+    var homeLockStart = 0;
 
     function clearLock() {
       if (homeLockInterval) { clearInterval(homeLockInterval); homeLockInterval = null; }
@@ -653,20 +654,28 @@
       });
 
       homeLocked = true;
-      var left = homeLockSeconds;
-      timerEl.textContent = left;
+      homeLockStart = Date.now();
+      timerEl.textContent = homeLockSeconds;
+      // 先更新一次显示
+      updateLockTimer();
 
-      homeLockInterval = setInterval(function() {
-        left--;
-        timerEl.textContent = left;
-        if (left <= 0) {
-          clearInterval(homeLockInterval);
-          homeLockInterval = null;
-          homeLocked = false;
-          overlay.classList.add('hidden');
-          btns.forEach(function(b) { b.classList.remove('locked'); });
-        }
-      }, 1000);
+      homeLockInterval = setInterval(updateLockTimer, 200);
+    }
+
+    function updateLockTimer() {
+      var elapsed = (Date.now() - homeLockStart) / 1000;
+      var left = Math.max(0, homeLockSeconds - elapsed);
+      var display = Math.ceil(left);
+      var timerEl = document.getElementById('homeLockTimer');
+      timerEl.textContent = display;
+
+      if (left <= 0) {
+        clearInterval(homeLockInterval);
+        homeLockInterval = null;
+        homeLocked = false;
+        document.getElementById('homeLockOverlay').classList.add('hidden');
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('locked'); });
+      }
     }
 
     // 页面刷新时清理旧 interval
@@ -1319,27 +1328,16 @@
 
     // ============ Service Worker (自动更新) ============
     if ('serviceWorker' in navigator) {
-      // 先强制清除所有 SW 缓存
-      caches.keys().then(function(keys) {
-        keys.forEach(function(k) { caches.delete(k); });
-      });
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        regs.forEach(function(r) { r.unregister(); });
-      }).then(function() {
-        // 延迟重新注册
-        setTimeout(function() {
-          navigator.serviceWorker.register('sw.js').then(function(reg) {
-            reg.addEventListener('updatefound', function() {
-              var newSW = reg.installing;
-              newSW.addEventListener('statechange', function() {
-                if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-                  window.location.reload();
-                }
-              });
-            });
-          }).catch(function() {});
-        }, 500);
-      });
+      navigator.serviceWorker.register('sw.js').then(function(reg) {
+        reg.addEventListener('updatefound', function() {
+          var newSW = reg.installing;
+          newSW.addEventListener('statechange', function() {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              window.location.reload();
+            }
+          });
+        });
+      }).catch(function() {});
     }
   </script>
 </body>
