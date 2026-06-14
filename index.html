@@ -345,14 +345,14 @@
     .hourly-goal-row.done-row { opacity: 0.6; }
     .hourly-goal-row.done-row .goal-text { text-decoration: line-through; color: var(--text-dim); }
     .check-mini {
-      width: 22px; height: 22px; min-width: 22px;
-      border-radius: 50%; font-size: 12px;
+      width: 26px; height: 26px; min-width: 26px;
+      border-radius: 50%; font-size: 14px; font-weight: 700;
       display: flex; align-items: center; justify-content: center;
-      color: var(--text-dim); cursor: pointer;
-      transition: all 0.15s;
+      cursor: pointer; transition: all 0.2s;
+      background: rgba(255,118,117,0.15); color: #ff7675;
     }
     .check-mini.done {
-      background: var(--green); color: #000; font-weight: 700;
+      background: var(--green); color: #000;
     }
     .hourly-goal-edit {
       flex: 1;
@@ -1004,7 +1004,7 @@
         if (isEditingHabit) {
           html += '<div class="hourly-goal-row habit"><span class="goal-tag habit-tag">习惯</span><div class="hourly-goal-edit"><input id="hourlyEditInput" placeholder="习惯目标..." onkeydown="if(event.key===\'Enter\')saveEditHourly(\''+s.id+'\');if(event.key===\'Escape\')cancelEditHourly();" onblur="saveEditHourly(\''+s.id+'\')"></div></div>';
         } else {
-          html += '<div class="hourly-goal-row habit' + (habitDone ? ' done-row' : '') + '" onclick="startEditHourly(\''+s.id+'\',\'habit\',\'' + (habitGoal||'').replace(/'/g,"\\'") + '\')"><span class="goal-tag habit-tag">习惯</span><span class="goal-text">' + (habitGoal || '点击设置...') + '</span><span class="check-mini' + (habitDone ? ' done' : '') + '" onclick="event.stopPropagation();toggleHourlyDone(\''+s.id+'\',\'habit\')">' + (habitDone ? '✓' : '○') + '</span></div>';
+          html += '<div class="hourly-goal-row habit' + (habitDone ? ' done-row' : '') + '" onclick="startEditHourly(\''+s.id+'\',\'habit\',\'' + (habitGoal||'').replace(/'/g,"\\'") + '\')"><span class="goal-tag habit-tag">习惯</span><span class="goal-text">' + (habitGoal || '点击设置...') + '</span><span class="check-mini' + (habitDone ? ' done' : '') + '" onclick="event.stopPropagation();toggleHourlyDone(\''+s.id+'\',\'habit\')">' + (habitDone ? '✓' : '✗') + '</span></div>';
         }
 
         // 45分钟专注目标
@@ -1012,7 +1012,7 @@
         if (isEditingFocus) {
           html += '<div class="hourly-goal-row focus"><span class="goal-tag focus-tag">45min</span><div class="hourly-goal-edit"><input id="hourlyEditInput" placeholder="45min目标..." onkeydown="if(event.key===\'Enter\')saveEditHourly(\''+s.id+'\');if(event.key===\'Escape\')cancelEditHourly();" onblur="saveEditHourly(\''+s.id+'\')"></div></div>';
         } else {
-          html += '<div class="hourly-goal-row focus' + (focusDone ? ' done-row' : '') + '" onclick="startEditHourly(\''+s.id+'\',\'focus\',\'' + (focusGoal||'').replace(/'/g,"\\'") + '\')"><span class="goal-tag focus-tag">45min</span><span class="goal-text">' + (focusGoal || '点击设置...') + '</span><span class="check-mini' + (focusDone ? ' done' : '') + '" onclick="event.stopPropagation();toggleHourlyDone(\''+s.id+'\',\'focus\')">' + (focusDone ? '✓' : '○') + '</span></div>';
+          html += '<div class="hourly-goal-row focus' + (focusDone ? ' done-row' : '') + '" onclick="startEditHourly(\''+s.id+'\',\'focus\',\'' + (focusGoal||'').replace(/'/g,"\\'") + '\')"><span class="goal-tag focus-tag">45min</span><span class="goal-text">' + (focusGoal || '点击设置...') + '</span><span class="check-mini' + (focusDone ? ' done' : '') + '" onclick="event.stopPropagation();toggleHourlyDone(\''+s.id+'\',\'focus\')">' + (focusDone ? '✓' : '✗') + '</span></div>';
         }
 
         html += '</div>';
