@@ -333,8 +333,18 @@
     }
     .hourly-slot.current-slot {
       border-color: var(--accent-light);
-      background: rgba(108,92,231,0.12);
-      box-shadow: 0 0 12px rgba(108,92,231,0.2);
+      background: linear-gradient(135deg, rgba(108,92,231,0.22), rgba(162,155,254,0.10));
+      box-shadow: 0 0 16px rgba(162,155,254,0.3), inset 0 0 20px rgba(162,155,254,0.06);
+      position: relative;
+      overflow: hidden;
+    }
+    .hourly-slot.current-slot::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 4px;
+      background: linear-gradient(180deg, var(--accent-light), #d0c8ff);
+      border-radius: 2px 0 0 2px;
     }
     .hourly-slot.past-slot {
       opacity: 0.45;
