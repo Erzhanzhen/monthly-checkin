@@ -257,10 +257,11 @@
       position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
       background: linear-gradient(transparent, rgba(15,15,26,0.95) 30%);
       display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-      pointer-events: all;
+      pointer-events: none;
       padding-bottom: calc(80px + var(--safe-bottom,16px));
+      transition: opacity 0.3s;
     }
-    .home-lock-overlay.hidden { display: none; }
+    .home-lock-overlay.hidden { opacity: 0; pointer-events: none !important; }
     .home-lock-icon { font-size: 28px; margin-bottom: 8px; }
     .home-lock-timer {
       font-size: 32px; font-weight: 900; color: var(--accent-light);
@@ -645,7 +646,6 @@
 
     // 页面加载时强制首页 + 启动锁
     switchTab('home');
-    initHomeLock();
 
     // ============ 原则数据 ============
     const PRINCIPLES = [
@@ -1260,6 +1260,7 @@
     render();
     renderPrinciples();
     renderCalendar();
+    initHomeLock();
 
     // 午夜自动刷新（检测日期变化）
     function scheduleMidnightRefresh() {
