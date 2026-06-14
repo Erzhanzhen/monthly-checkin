@@ -254,18 +254,19 @@
 
     /* ── 首页锁 ── */
     .home-lock-overlay {
-      position: fixed; inset: 0; z-index: 100;
-      background: rgba(15,15,26,0.92);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      background: linear-gradient(transparent, rgba(15,15,26,0.95) 30%);
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
       pointer-events: all;
+      padding-bottom: calc(80px + var(--safe-bottom,16px));
     }
     .home-lock-overlay.hidden { display: none; }
-    .home-lock-icon { font-size: 48px; margin-bottom: 16px; }
+    .home-lock-icon { font-size: 28px; margin-bottom: 8px; }
     .home-lock-timer {
-      font-size: 36px; font-weight: 900; color: var(--accent-light);
-      margin-bottom: 8px;
+      font-size: 32px; font-weight: 900; color: var(--accent-light);
+      margin-bottom: 4px;
     }
-    .home-lock-hint { font-size: 13px; color: var(--text-dim); }
+    .home-lock-hint { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; }
 
     /* ── Hourly ── */
     .hourly-date-header {
