@@ -628,10 +628,21 @@
     var homeLockSeconds = 5;
     var homeLockInterval = null;
 
+    function clearLock() {
+      if (homeLockInterval) { clearInterval(homeLockInterval); homeLockInterval = null; }
+    }
+
     function initHomeLock() {
+      // 先清理旧的 interval
+      clearLock();
+
       var overlay = document.getElementById('homeLockOverlay');
       var timerEl = document.getElementById('homeLockTimer');
       var btns = document.querySelectorAll('.tab-btn');
+
+      // 先清除所有锁定状态
+      overlay.classList.remove('hidden');
+      btns.forEach(function(b) { b.classList.remove('locked'); });
 
       // 标记时刻/每日目标为锁定
       btns.forEach(function(b) {
@@ -657,6 +668,9 @@
         }
       }, 1000);
     }
+
+    // 页面刷新时清理旧 interval
+    window.addEventListener('beforeunload', clearLock);
 
     // ============ 原则数据 ============
     const PRINCIPLES = [
