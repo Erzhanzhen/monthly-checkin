@@ -1226,17 +1226,21 @@
 
       // ---- 时段卡片 ----
       var html = '';
+      var pastHtml = '';
       var currentSlotId = currentRound > 0 && currentRound <= WORK_SLOTS.length ? WORK_SLOTS[currentRound - 1].id : null;
 
-      // 先渲染当前时段（高亮置顶）
+      // 当前时段
       var currentSlotHtml = '';
+      // 未来时段
+      var futureHtml = '';
+
       WORK_SLOTS.forEach(function(s, idx) {
         var habitGoal = getHourlyGoal(today, s.id, 'habit');
         var focusGoal = getHourlyGoal(today, s.id, 'focus');
         var habitDone = isHourlyDone(today, s.id, 'habit');
         var focusDone = isHourlyDone(today, s.id, 'focus');
         var isCurrent = s.id === currentSlotId;
-        var isPast = (idx + 1) < currentRound; // 该轮已过
+        var isPast = (idx + 1) < currentRound;
 
         var extraClass = '';
         if (isCurrent) extraClass += ' current-slot';
@@ -1265,15 +1269,15 @@
 
         if (isCurrent) {
           currentSlotHtml = card;
+        } else if (isPast) {
+          pastHtml += card;
         } else {
-          html += card;
+          futureHtml += card;
         }
       });
 
-      // 当前时段放在最上面
-      if (currentSlotHtml) {
-        html = currentSlotHtml + html;
-      }
+      // 排序: 当前 → 未来 → 已过
+      html = currentSlotHtml + futureHtml + pastHtml;
 
       html += '<div class="hourly-divider">🌙 晚间</div>';
 
