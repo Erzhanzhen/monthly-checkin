@@ -644,9 +644,6 @@
       }, 1000);
     }
 
-    // 页面加载时强制首页 + 启动锁
-    switchTab('home');
-
     // ============ 原则数据 ============
     const PRINCIPLES = [
       '好习惯大于一切',
@@ -1260,6 +1257,7 @@
     render();
     renderPrinciples();
     renderCalendar();
+    switchTab('home');
     initHomeLock();
 
     // 午夜自动刷新（检测日期变化）
