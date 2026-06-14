@@ -326,6 +326,7 @@
       border-radius: 6px;
       border: 1px solid transparent;
       transition: border-color 0.15s, background 0.15s;
+      min-height: 28px;
     }
     .hourly-goal-row.habit { background: rgba(108,92,231,0.06); }
     .hourly-goal-row.focus { background: rgba(0,184,148,0.05); }
@@ -339,8 +340,20 @@
     }
     .habit-tag { background: rgba(108,92,231,0.2); color: var(--accent-light); }
     .focus-tag { background: rgba(0,184,148,0.2); color: var(--green); }
-    .goal-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .goal-text { flex: 1; word-break: break-all; line-height: 1.5; }
     .hourly-goal-row:active { border-color: var(--border); }
+    .hourly-goal-row.done-row { opacity: 0.6; }
+    .hourly-goal-row.done-row .goal-text { text-decoration: line-through; color: var(--text-dim); }
+    .check-mini {
+      width: 22px; height: 22px; min-width: 22px;
+      border-radius: 50%; font-size: 12px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-dim); cursor: pointer;
+      transition: all 0.15s;
+    }
+    .check-mini.done {
+      background: var(--green); color: #000; font-weight: 700;
+    }
     .hourly-goal-edit {
       flex: 1;
     }
@@ -898,13 +911,22 @@
       return (g && g[type]) || '';
     }
 
-    function toggleHourlyDone(slotId) {
+    function toggleHourlyDone(slotId, type) {
       var d = loadHourly();
       var t = getToday();
       if (!d[t]) d[t] = { goals: {}, done: {} };
-      d[t].done[slotId] = !d[t].done[slotId];
+      if (!d[t].done[slotId] || typeof d[t].done[slotId] === 'boolean') {
+        d[t].done[slotId] = {};
+      }
+      d[t].done[slotId][type] = !(d[t].done[slotId][type] === true);
       saveHourly(d);
       renderHourly();
+    }
+
+    function isHourlyDone(today, slotId, type) {
+      var d = today.done[slotId];
+      if (typeof d === 'boolean') return d; // 兼容旧数据
+      return !!(d && d[type]);
     }
 
     function clearAllHourly() {
@@ -969,10 +991,11 @@
       WORK_SLOTS.forEach(function(s) {
         var habitGoal = getHourlyGoal(today, s.id, 'habit');
         var focusGoal = getHourlyGoal(today, s.id, 'focus');
-        var isDone = !!today.done[s.id];
-        if (isDone) doneCount++;
+        var habitDone = isHourlyDone(today, s.id, 'habit');
+        var focusDone = isHourlyDone(today, s.id, 'focus');
+        if (habitDone && focusDone) doneCount++;
 
-        html += '<div class="hourly-slot' + (isDone ? ' done' : '') + '">';
+        html += '<div class="hourly-slot">';
         html += '<div class="hourly-time">' + s.time + '<div class="sub">45+15</div></div>';
         html += '<div class="hourly-goals-wrap">';
 
@@ -981,7 +1004,7 @@
         if (isEditingHabit) {
           html += '<div class="hourly-goal-row habit"><span class="goal-tag habit-tag">习惯</span><div class="hourly-goal-edit"><input id="hourlyEditInput" placeholder="习惯目标..." onkeydown="if(event.key===\'Enter\')saveEditHourly(\''+s.id+'\');if(event.key===\'Escape\')cancelEditHourly();" onblur="saveEditHourly(\''+s.id+'\')"></div></div>';
         } else {
-          html += '<div class="hourly-goal-row habit' + (habitGoal ? '' : ' empty-row') + '" onclick="startEditHourly(\''+s.id+'\',\'habit\',\'' + (habitGoal||'').replace(/'/g,"\\'") + '\')"><span class="goal-tag habit-tag">习惯</span><span class="goal-text">' + (habitGoal || '点击设置...') + '</span></div>';
+          html += '<div class="hourly-goal-row habit' + (habitDone ? ' done-row' : '') + '" onclick="startEditHourly(\''+s.id+'\',\'habit\',\'' + (habitGoal||'').replace(/'/g,"\\'") + '\')"><span class="goal-tag habit-tag">习惯</span><span class="goal-text">' + (habitGoal || '点击设置...') + '</span><span class="check-mini' + (habitDone ? ' done' : '') + '" onclick="event.stopPropagation();toggleHourlyDone(\''+s.id+'\',\'habit\')">' + (habitDone ? '✓' : '○') + '</span></div>';
         }
 
         // 45分钟专注目标
@@ -989,11 +1012,10 @@
         if (isEditingFocus) {
           html += '<div class="hourly-goal-row focus"><span class="goal-tag focus-tag">45min</span><div class="hourly-goal-edit"><input id="hourlyEditInput" placeholder="45min目标..." onkeydown="if(event.key===\'Enter\')saveEditHourly(\''+s.id+'\');if(event.key===\'Escape\')cancelEditHourly();" onblur="saveEditHourly(\''+s.id+'\')"></div></div>';
         } else {
-          html += '<div class="hourly-goal-row focus' + (focusGoal ? '' : ' empty-row') + '" onclick="startEditHourly(\''+s.id+'\',\'focus\',\'' + (focusGoal||'').replace(/'/g,"\\'") + '\')"><span class="goal-tag focus-tag">45min</span><span class="goal-text">' + (focusGoal || '点击设置...') + '</span></div>';
+          html += '<div class="hourly-goal-row focus' + (focusDone ? ' done-row' : '') + '" onclick="startEditHourly(\''+s.id+'\',\'focus\',\'' + (focusGoal||'').replace(/'/g,"\\'") + '\')"><span class="goal-tag focus-tag">45min</span><span class="goal-text">' + (focusGoal || '点击设置...') + '</span><span class="check-mini' + (focusDone ? ' done' : '') + '" onclick="event.stopPropagation();toggleHourlyDone(\''+s.id+'\',\'focus\')">' + (focusDone ? '✓' : '○') + '</span></div>';
         }
 
         html += '</div>';
-        html += '<div class="hourly-check" onclick="toggleHourlyDone(\''+s.id+'\')">✓</div>';
         html += '</div>';
       });
 
@@ -1001,14 +1023,14 @@
 
       // 晚间时段
       NIGHT_SLOTS.forEach(function(s) {
-        var goal = today.goals[s.id] || s.goal;
-        var isDone = !!today.done[s.id];
+        var goal = typeof today.goals[s.id] === 'string' ? today.goals[s.id] : (getHourlyGoal(today, s.id, 'habit') || s.goal);
+        var isDone = typeof today.done[s.id] === 'boolean' ? today.done[s.id] : isHourlyDone(today, s.id, 'habit');
         if (isDone) doneCount++;
 
         html += '<div class="hourly-slot night' + (isDone ? ' done' : '') + '">';
         html += '<div class="hourly-time">' + s.time + '</div>';
         html += '<div class="hourly-goal' + (goal ? '' : ' empty') + '">' + (goal || '点击设置目标...') + '</div>';
-        html += '<div class="hourly-check" onclick="toggleHourlyDone(\''+s.id+'\')">✓</div>';
+        html += '<div class="hourly-check" onclick="toggleHourlyDone(\''+s.id+'\',\'habit\')">✓</div>';
         html += '</div>';
       });
 
