@@ -332,6 +332,9 @@
     .hourly-time .sub {
       font-size: 9px; font-weight: 400; color: var(--text-dim);
     }
+    .hourly-time .time-dash {
+      font-size: 9px; font-weight: 400; color: var(--text-dim); line-height: 1;
+    }
     .hourly-goal {
       flex: 1; font-size: 13px; line-height: 1.4;
       color: var(--text); cursor: pointer;
@@ -1123,7 +1126,7 @@
         var focusDone = isHourlyDone(today, s.id, 'focus');
 
         html += '<div class="hourly-slot">';
-        html += '<div class="hourly-time">' + s.time + '<br>' + s.end + '<div class="sub">45+15</div></div>';
+        html += '<div class="hourly-time">' + s.time + '<br><span class="time-dash">—</span><br>' + s.end + '<div class="sub">45+15</div></div>';
         html += '<div class="hourly-goals-wrap">';
 
         var isEditingHabit = hourlyEditingSlot === s.id && hourlyEditingType === 'habit';
