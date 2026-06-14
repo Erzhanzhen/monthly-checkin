@@ -1277,22 +1277,27 @@
 
     // ============ Service Worker (自动更新) ============
     if ('serviceWorker' in navigator) {
-      // 先注销旧 SW，强制用最新缓存
+      // 先强制清除所有 SW 缓存
+      caches.keys().then(function(keys) {
+        keys.forEach(function(k) { caches.delete(k); });
+      });
       navigator.serviceWorker.getRegistrations().then(function(regs) {
         regs.forEach(function(r) { r.unregister(); });
-      });
-      setTimeout(() => {
-        navigator.serviceWorker.register('sw.js').then(reg => {
-          reg.addEventListener('updatefound', () => {
-            const newSW = reg.installing;
-            newSW.addEventListener('statechange', () => {
-              if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-                window.location.reload();
-              }
+      }).then(function() {
+        // 延迟重新注册
+        setTimeout(function() {
+          navigator.serviceWorker.register('sw.js').then(function(reg) {
+            reg.addEventListener('updatefound', function() {
+              var newSW = reg.installing;
+              newSW.addEventListener('statechange', function() {
+                if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+                  window.location.reload();
+                }
+              });
             });
-          });
-        }).catch(() => {});
-      }, 500);
+          }).catch(function() {});
+        }, 500);
+      });
     }
   </script>
 </body>
