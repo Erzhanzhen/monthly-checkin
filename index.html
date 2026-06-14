@@ -529,7 +529,6 @@
 
   <!-- 第二页：每小时打卡 -->
   <div class="tab-page" id="page-hourly">
-    <div class="hourly-date-header" id="hourlyDateHeader"></div>
     <div class="hourly-round-info" id="hourlyRoundInfo"></div>
     <div class="hourly-round-stats" id="hourlyRoundStats"></div>
     <div class="hourly-dots-row" id="hourlyDotsHabit"></div>
@@ -1011,10 +1010,10 @@
 
     function renderHourly() {
       var today = getTodayHourly();
-      var dateEl = document.getElementById('hourlyDateHeader');
+      var dateEl = document.getElementById('headerDate');
       var now = new Date();
       var weekDays = ['日','一','二','三','四','五','六'];
-      dateEl.innerHTML = '📅 <span>' + now.getFullYear()+'.'+(now.getMonth()+1)+'.'+now.getDate()+' 周'+weekDays[now.getDay()]+'</span>';
+      dateEl.textContent = '📅 ' + now.getFullYear()+'.'+(now.getMonth()+1)+'.'+now.getDate()+' 周'+weekDays[now.getDay()];
 
       // ---- 计算当前轮次 ----
       var currentRound = 0; // 0 = 还没开始
