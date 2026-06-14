@@ -254,7 +254,7 @@
     /* ── Hourly ── */
     .hourly-date-header {
       text-align: center;
-      padding: 8px 0 12px;
+      padding: 8px 0 0;
       font-size: 13px;
       color: var(--text-dim);
     }
@@ -262,18 +262,46 @@
       color: var(--accent-light);
       font-weight: 700;
     }
-    .hourly-progress-mini {
-      display: flex; align-items: center; gap: 8px;
-      margin-bottom: 14px;
-      font-size: 12px; color: var(--text-dim);
+    .hourly-round-info {
+      text-align: center; padding: 4px 0 6px;
+      font-size: 14px; font-weight: 700; color: var(--text);
     }
-    .hourly-progress-mini .bar {
-      flex: 1; height: 4px; background: var(--border);
-      border-radius: 2px; overflow: hidden;
+    .hourly-round-info .round-num {
+      font-size: 24px; font-weight: 900; color: var(--accent-light);
     }
-    .hourly-progress-mini .bar-fill {
-      height: 100%; background: var(--accent-light);
-      border-radius: 2px; transition: width 0.3s;
+    .hourly-round-stats {
+      display: flex; justify-content: center; gap: 16px;
+      font-size: 11px; color: var(--text-dim); margin-bottom: 8px;
+    }
+    .hourly-round-stats span { display: flex; align-items: center; gap: 3px; }
+    .hourly-round-stats .done-cnt { color: var(--green); font-weight: 700; }
+    .hourly-round-stats .miss-cnt { color: #ff7675; font-weight: 700; }
+    .hourly-dots-row {
+      display: flex; align-items: center; gap: 3px;
+      margin-bottom: 6px; padding: 0 4px;
+      font-size: 10px; color: var(--text-dim);
+    }
+    .hourly-dots-row .dots-label {
+      min-width: 32px; font-size: 10px; font-weight: 600; flex-shrink: 0;
+    }
+    .hourly-dots-row .dots {
+      display: flex; gap: 2px; flex-wrap: wrap; flex: 1;
+    }
+    .dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--border); flex-shrink: 0;
+      transition: background 0.2s;
+    }
+    .dot.done { background: var(--green); }
+    .dot.miss { background: #ff7675; }
+    .dot.current {
+      background: var(--accent-light);
+      box-shadow: 0 0 6px var(--accent-light);
+      animation: dotPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes dotPulse {
+      0%, 100% { box-shadow: 0 0 4px var(--accent-light); }
+      50% { box-shadow: 0 0 10px var(--accent-light), 0 0 16px var(--accent); }
     }
     .hourly-slot {
       background: var(--card);
@@ -497,10 +525,10 @@
   <!-- 第二页：每小时打卡 -->
   <div class="tab-page" id="page-hourly">
     <div class="hourly-date-header" id="hourlyDateHeader"></div>
-    <div class="hourly-progress-mini">
-      <span id="hourlyProgressLabel">0/19</span>
-      <div class="bar"><div class="bar-fill" id="hourlyProgressBar" style="width:0%"></div></div>
-    </div>
+    <div class="hourly-round-info" id="hourlyRoundInfo"></div>
+    <div class="hourly-round-stats" id="hourlyRoundStats"></div>
+    <div class="hourly-dots-row" id="hourlyDotsHabit"></div>
+    <div class="hourly-dots-row" id="hourlyDotsFocus"></div>
     <div class="hourly-actions">
       <button onclick="clearAllHourly()">🔄 清空今日</button>
       <button onclick="copyYesterdayHourly()">📋 复制昨日</button>
@@ -983,23 +1011,116 @@
       var weekDays = ['日','一','二','三','四','五','六'];
       dateEl.innerHTML = '📅 <span>' + now.getFullYear()+'.'+(now.getMonth()+1)+'.'+now.getDate()+' 周'+weekDays[now.getDay()]+'</span>';
 
-      var html = '';
+      // ---- 计算当前轮次 ----
+      var currentRound = 0; // 0 = 还没开始
       var total = WORK_SLOTS.length + NIGHT_SLOTS.length;
-      var doneCount = 0;
+      var h = now.getHours(), m = now.getMinutes();
+      var nowMin = h * 60 + m;
 
-      // 工作时段
+      for (var i = 0; i < WORK_SLOTS.length; i++) {
+        var t = WORK_SLOTS[i].time.split(':');
+        var slotMin = parseInt(t[0]) * 60 + parseInt(t[1]);
+        if (nowMin >= slotMin) currentRound = i + 1;
+      }
+      // 晚间轮次
+      if (nowMin >= 21*60+30) currentRound = 16; // 自由活动
+      if (nowMin >= 22*60) currentRound = 17;    // 上床
+      if (nowMin >= 22*60+30) currentRound = 18; // 入睡
+      if (nowMin >= 6*60+30 && nowMin < 22*60+30 && currentRound === 0) currentRound = 1;
+
+      // 检查凌晨（0-6:30），入睡和起床是跨天的
+      if (h < 6 || (h === 6 && m < 30)) {
+        currentRound = 18; // 还在入睡时间段
+      }
+
+      // ---- 统计 ----
+      var habitDoneCnt = 0, habitMissCnt = 0;
+      var focusDoneCnt = 0, focusMissCnt = 0;
+      var habitDots = '', focusDots = '';
+
+      for (var i = 0; i < WORK_SLOTS.length; i++) {
+        var s = WORK_SLOTS[i];
+        var habitDone = isHourlyDone(today, s.id, 'habit');
+        var focusDone = isHourlyDone(today, s.id, 'focus');
+        var roundNum = i + 1;
+
+        // habit dot
+        if (roundNum < currentRound) {
+          if (habitDone) { habitDots += '<span class="dot done"></span>'; habitDoneCnt++; }
+          else { habitDots += '<span class="dot miss"></span>'; habitMissCnt++; }
+        } else if (roundNum === currentRound) {
+          habitDots += '<span class="dot current"></span>';
+        } else {
+          habitDots += '<span class="dot"></span>';
+        }
+
+        // focus dot
+        if (roundNum < currentRound) {
+          if (focusDone) { focusDots += '<span class="dot done"></span>'; focusDoneCnt++; }
+          else { focusDots += '<span class="dot miss"></span>'; focusMissCnt++; }
+        } else if (roundNum === currentRound) {
+          focusDots += '<span class="dot current"></span>';
+        } else {
+          focusDots += '<span class="dot"></span>';
+        }
+      }
+
+      // 晚间4轮
+      for (var j = 0; j < NIGHT_SLOTS.length; j++) {
+        var ns = NIGHT_SLOTS[j];
+        var nightDone = typeof today.done[ns.id] === 'boolean' ? today.done[ns.id] : isHourlyDone(today, ns.id, 'habit');
+        var rn = WORK_SLOTS.length + j + 1;
+
+        if (rn < currentRound) {
+          if (nightDone) { habitDots += '<span class="dot done"></span>'; habitDoneCnt++; }
+          else { habitDots += '<span class="dot miss"></span>'; habitMissCnt++; }
+        } else if (rn === currentRound) {
+          habitDots += '<span class="dot current"></span>';
+        } else {
+          habitDots += '<span class="dot"></span>';
+        }
+        // 晚间只有一行，focus行也用相同dot
+        if (rn < currentRound) {
+          if (nightDone) { focusDots += '<span class="dot done"></span>'; focusDoneCnt++; }
+          else { focusDots += '<span class="dot miss"></span>'; focusMissCnt++; }
+        } else if (rn === currentRound) {
+          focusDots += '<span class="dot current"></span>';
+        } else {
+          focusDots += '<span class="dot"></span>';
+        }
+      }
+
+      // ---- 渲染顶部信息 ----
+      var infoEl = document.getElementById('hourlyRoundInfo');
+      if (currentRound === 0 || currentRound > total) {
+        infoEl.innerHTML = '<span class="round-num">' + total + '</span> 轮 · 全天结束';
+      } else {
+        infoEl.innerHTML = '第 <span class="round-num">' + currentRound + '</span> / ' + total + ' 轮';
+      }
+
+      var statsEl = document.getElementById('hourlyRoundStats');
+      statsEl.innerHTML =
+        '<span>习惯 <span class="done-cnt">✓' + habitDoneCnt + '</span> <span class="miss-cnt">✗' + habitMissCnt + '</span></span>' +
+        '<span>45min <span class="done-cnt">✓' + focusDoneCnt + '</span> <span class="miss-cnt">✗' + focusMissCnt + '</span></span>';
+
+      document.getElementById('hourlyDotsHabit').innerHTML =
+        '<span class="dots-label">习惯</span><div class="dots">' + habitDots + '</div>';
+      document.getElementById('hourlyDotsFocus').innerHTML =
+        '<span class="dots-label">45min</span><div class="dots">' + focusDots + '</div>';
+
+      // ---- 时段卡片 ----
+      var html = '';
+
       WORK_SLOTS.forEach(function(s) {
         var habitGoal = getHourlyGoal(today, s.id, 'habit');
         var focusGoal = getHourlyGoal(today, s.id, 'focus');
         var habitDone = isHourlyDone(today, s.id, 'habit');
         var focusDone = isHourlyDone(today, s.id, 'focus');
-        if (habitDone && focusDone) doneCount++;
 
         html += '<div class="hourly-slot">';
         html += '<div class="hourly-time">' + s.time + '<div class="sub">45+15</div></div>';
         html += '<div class="hourly-goals-wrap">';
 
-        // 习惯目标
         var isEditingHabit = hourlyEditingSlot === s.id && hourlyEditingType === 'habit';
         if (isEditingHabit) {
           html += '<div class="hourly-goal-row habit"><span class="goal-tag habit-tag">习惯</span><div class="hourly-goal-edit"><input id="hourlyEditInput" placeholder="习惯目标..." onkeydown="if(event.key===\'Enter\')saveEditHourly(\''+s.id+'\');if(event.key===\'Escape\')cancelEditHourly();" onblur="saveEditHourly(\''+s.id+'\')"></div></div>';
@@ -1007,7 +1128,6 @@
           html += '<div class="hourly-goal-row habit' + (habitDone ? ' done-row' : '') + '" onclick="startEditHourly(\''+s.id+'\',\'habit\',\'' + (habitGoal||'').replace(/'/g,"\\'") + '\')"><span class="goal-tag habit-tag">习惯</span><span class="goal-text">' + (habitGoal || '点击设置...') + '</span><span class="check-mini' + (habitDone ? ' done' : '') + '" onclick="event.stopPropagation();toggleHourlyDone(\''+s.id+'\',\'habit\')">' + (habitDone ? '✓' : '✗') + '</span></div>';
         }
 
-        // 45分钟专注目标
         var isEditingFocus = hourlyEditingSlot === s.id && hourlyEditingType === 'focus';
         if (isEditingFocus) {
           html += '<div class="hourly-goal-row focus"><span class="goal-tag focus-tag">45min</span><div class="hourly-goal-edit"><input id="hourlyEditInput" placeholder="45min目标..." onkeydown="if(event.key===\'Enter\')saveEditHourly(\''+s.id+'\');if(event.key===\'Escape\')cancelEditHourly();" onblur="saveEditHourly(\''+s.id+'\')"></div></div>';
@@ -1021,11 +1141,9 @@
 
       html += '<div class="hourly-divider">🌙 晚间</div>';
 
-      // 晚间时段
       NIGHT_SLOTS.forEach(function(s) {
         var goal = typeof today.goals[s.id] === 'string' ? today.goals[s.id] : (getHourlyGoal(today, s.id, 'habit') || s.goal);
         var isDone = typeof today.done[s.id] === 'boolean' ? today.done[s.id] : isHourlyDone(today, s.id, 'habit');
-        if (isDone) doneCount++;
 
         html += '<div class="hourly-slot night' + (isDone ? ' done' : '') + '">';
         html += '<div class="hourly-time">' + s.time + '</div>';
@@ -1035,8 +1153,6 @@
       });
 
       document.getElementById('hourlySlots').innerHTML = html;
-      document.getElementById('hourlyProgressLabel').textContent = doneCount + '/' + total;
-      document.getElementById('hourlyProgressBar').style.width = (doneCount/total*100) + '%';
     }
     const CYCLE_END = new Date(2026, 6, 12);
 
