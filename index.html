@@ -1277,18 +1277,22 @@
 
     // ============ Service Worker (自动更新) ============
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').then(reg => {
-        // 检测到新 SW 等待激活 → 提示并刷新
-        reg.addEventListener('updatefound', () => {
-          const newSW = reg.installing;
-          newSW.addEventListener('statechange', () => {
-            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-              // 新版本已就绪，自动刷新
-              window.location.reload();
-            }
+      // 先注销旧 SW，强制用最新缓存
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(r) { r.unregister(); });
+      });
+      setTimeout(() => {
+        navigator.serviceWorker.register('sw.js').then(reg => {
+          reg.addEventListener('updatefound', () => {
+            const newSW = reg.installing;
+            newSW.addEventListener('statechange', () => {
+              if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+                window.location.reload();
+              }
+            });
           });
-        });
-      }).catch(() => {});
+        }).catch(() => {});
+      }, 500);
     }
   </script>
 </body>
