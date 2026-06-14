@@ -107,6 +107,43 @@
       margin-top: 10px;
       font-size: 12px;
       color: var(--text-dim);
+
+    /* ── Countdown ── */
+    .countdown-card {
+      background: linear-gradient(135deg, #1a1a2e 0%, #252550 100%);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      text-align: center;
+    }
+    .countdown-number {
+      font-size: 48px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      background: linear-gradient(135deg, var(--accent-light), #ff7675);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+    .countdown-label {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 2px;
+      margin-bottom: 10px;
+    }
+    .countdown-bar {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .countdown-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
     }
     .streak-num { color: var(--orange); font-weight: 700; font-size: 15px; }
 
@@ -722,7 +759,11 @@
       }
 
       document.getElementById('countdownWrap').innerHTML =
-        `<div class="countdown-text" style="color:${color};text-align:center;font-size:15px;font-weight:600;padding:10px 0 4px;">${text}</div>`;
+        `<div class="countdown-card">
+          <div class="countdown-number">${leftDays <= 0 ? '🎉' : leftDays}</div>
+          <div class="countdown-label">${leftDays <= 0 ? '周期已结束' : '天 剩余'}</div>
+          <div class="countdown-bar"><div class="countdown-bar-fill" style="width:${leftDays <= 0 ? 100 : Math.min(100, (leftDays / 30) * 100)}%;background:${color};"></div></div>
+        </div>`;
     }
 
     // ============ 初始化 ============
