@@ -336,6 +336,13 @@
       background: rgba(108,92,231,0.12);
       box-shadow: 0 0 12px rgba(108,92,231,0.2);
     }
+    .hourly-slot.past-slot {
+      opacity: 0.45;
+      text-decoration: line-through;
+      text-decoration-color: rgba(255,255,255,0.2);
+      border-color: rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02);
+    }
     .hourly-slot.done {
       border-color: rgba(0,184,148,0.4);
       background: rgba(0,184,148,0.06);
@@ -534,7 +541,7 @@
   <div class="home-lock-overlay" id="homeLockOverlay">
     <div class="home-lock-icon">🔒</div>
     <div class="home-lock-timer" id="homeLockTimer">5</div>
-    <div class="home-lock-hint">阅读首页 5 秒后解锁</div>
+    <div class="home-lock-hint">阅读原则 5 秒后解锁</div>
   </div>
 
   <div class="header" style="position:relative;">
@@ -1223,14 +1230,19 @@
 
       // 先渲染当前时段（高亮置顶）
       var currentSlotHtml = '';
-      WORK_SLOTS.forEach(function(s) {
+      WORK_SLOTS.forEach(function(s, idx) {
         var habitGoal = getHourlyGoal(today, s.id, 'habit');
         var focusGoal = getHourlyGoal(today, s.id, 'focus');
         var habitDone = isHourlyDone(today, s.id, 'habit');
         var focusDone = isHourlyDone(today, s.id, 'focus');
         var isCurrent = s.id === currentSlotId;
+        var isPast = (idx + 1) < currentRound; // 该轮已过
 
-        var card = '<div class="hourly-slot' + (isCurrent ? ' current-slot' : '') + '">';
+        var extraClass = '';
+        if (isCurrent) extraClass += ' current-slot';
+        if (isPast) extraClass += ' past-slot';
+
+        var card = '<div class="hourly-slot' + extraClass + '">';
         card += '<div class="hourly-time"><div>' + s.time + '</div><div class="time-dash">│</div><div>' + s.end + '</div><div class="sub">45+15</div></div>';
         card += '<div class="hourly-goals-wrap">';
 
