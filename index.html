@@ -331,6 +331,11 @@
       display: flex; align-items: center; gap: 8px;
       transition: border-color 0.2s, background 0.2s;
     }
+    .hourly-slot.current-slot {
+      border-color: var(--accent-light);
+      background: rgba(108,92,231,0.12);
+      box-shadow: 0 0 12px rgba(108,92,231,0.2);
+    }
     .hourly-slot.done {
       border-color: rgba(0,184,148,0.4);
       background: rgba(0,184,148,0.06);
@@ -646,6 +651,7 @@
 
     // ============ 原则数据 ============
     const PRINCIPLES = [
+      '再不努力老家房子是别人的了！',
       '好习惯大于一切',
       '每小时有具体产出',
       '进入心流，保持专注',
@@ -653,8 +659,7 @@
       '慎终如则，善始善终',
       '先做一个垃圾出来',
       '不舒服就要找原因',
-      '要有方法，而不是假努力',
-      '再不努力老家房子是别人的了！'
+      '要有方法，而不是假努力'
     ];
 
     // ============ 任务数据定义 ============
@@ -1182,34 +1187,49 @@
 
       // ---- 时段卡片 ----
       var html = '';
+      var currentSlotId = currentRound > 0 && currentRound <= WORK_SLOTS.length ? WORK_SLOTS[currentRound - 1].id : null;
 
+      // 先渲染当前时段（高亮置顶）
+      var currentSlotHtml = '';
       WORK_SLOTS.forEach(function(s) {
         var habitGoal = getHourlyGoal(today, s.id, 'habit');
         var focusGoal = getHourlyGoal(today, s.id, 'focus');
         var habitDone = isHourlyDone(today, s.id, 'habit');
         var focusDone = isHourlyDone(today, s.id, 'focus');
+        var isCurrent = s.id === currentSlotId;
 
-        html += '<div class="hourly-slot">';
-        html += '<div class="hourly-time"><div>' + s.time + '</div><div class="time-dash">│</div><div>' + s.end + '</div><div class="sub">45+15</div></div>';
-        html += '<div class="hourly-goals-wrap">';
+        var card = '<div class="hourly-slot' + (isCurrent ? ' current-slot' : '') + '">';
+        card += '<div class="hourly-time"><div>' + s.time + '</div><div class="time-dash">│</div><div>' + s.end + '</div><div class="sub">45+15</div></div>';
+        card += '<div class="hourly-goals-wrap">';
 
         var isEditingHabit = hourlyEditingSlot === s.id && hourlyEditingType === 'habit';
         if (isEditingHabit) {
-          html += '<div class="hourly-goal-row habit"><span class="goal-tag habit-tag">习惯</span><div class="hourly-goal-edit"><input id="hourlyEditInput" placeholder="习惯目标..." onkeydown="if(event.key===\'Enter\')saveEditHourly(\''+s.id+'\');if(event.key===\'Escape\')cancelEditHourly();" onblur="saveEditHourly(\''+s.id+'\')"></div></div>';
+          card += '<div class="hourly-goal-row habit"><span class="goal-tag habit-tag">习惯</span><div class="hourly-goal-edit"><input id="hourlyEditInput" placeholder="习惯目标..." onkeydown="if(event.key===\'Enter\')saveEditHourly(\''+s.id+'\');if(event.key===\'Escape\')cancelEditHourly();" onblur="saveEditHourly(\''+s.id+'\')"></div></div>';
         } else {
-          html += '<div class="hourly-goal-row habit' + (habitDone ? ' done-row' : '') + '" onclick="startEditHourly(\''+s.id+'\',\'habit\',\'' + (habitGoal||'').replace(/'/g,"\\'") + '\')"><span class="goal-tag habit-tag">习惯</span><span class="goal-text">' + (habitGoal || '点击设置...') + '</span><span class="check-mini' + (habitDone ? ' done' : '') + '" onclick="event.stopPropagation();toggleHourlyDone(\''+s.id+'\',\'habit\')">' + (habitDone ? '✓' : '✗') + '</span></div>';
+          card += '<div class="hourly-goal-row habit' + (habitDone ? ' done-row' : '') + '" onclick="startEditHourly(\''+s.id+'\',\'habit\',\'' + (habitGoal||'').replace(/'/g,"\\'") + '\')"><span class="goal-tag habit-tag">习惯</span><span class="goal-text">' + (habitGoal || '点击设置...') + '</span><span class="check-mini' + (habitDone ? ' done' : '') + '" onclick="event.stopPropagation();toggleHourlyDone(\''+s.id+'\',\'habit\')">' + (habitDone ? '✓' : '✗') + '</span></div>';
         }
 
         var isEditingFocus = hourlyEditingSlot === s.id && hourlyEditingType === 'focus';
         if (isEditingFocus) {
-          html += '<div class="hourly-goal-row focus"><span class="goal-tag focus-tag">45min</span><div class="hourly-goal-edit"><input id="hourlyEditInput" placeholder="45min目标..." onkeydown="if(event.key===\'Enter\')saveEditHourly(\''+s.id+'\');if(event.key===\'Escape\')cancelEditHourly();" onblur="saveEditHourly(\''+s.id+'\')"></div></div>';
+          card += '<div class="hourly-goal-row focus"><span class="goal-tag focus-tag">45min</span><div class="hourly-goal-edit"><input id="hourlyEditInput" placeholder="45min目标..." onkeydown="if(event.key===\'Enter\')saveEditHourly(\''+s.id+'\');if(event.key===\'Escape\')cancelEditHourly();" onblur="saveEditHourly(\''+s.id+'\')"></div></div>';
         } else {
-          html += '<div class="hourly-goal-row focus' + (focusDone ? ' done-row' : '') + '" onclick="startEditHourly(\''+s.id+'\',\'focus\',\'' + (focusGoal||'').replace(/'/g,"\\'") + '\')"><span class="goal-tag focus-tag">45min</span><span class="goal-text">' + (focusGoal || '点击设置...') + '</span><span class="check-mini' + (focusDone ? ' done' : '') + '" onclick="event.stopPropagation();toggleHourlyDone(\''+s.id+'\',\'focus\')">' + (focusDone ? '✓' : '✗') + '</span></div>';
+          card += '<div class="hourly-goal-row focus' + (focusDone ? ' done-row' : '') + '" onclick="startEditHourly(\''+s.id+'\',\'focus\',\'' + (focusGoal||'').replace(/'/g,"\\'") + '\')"><span class="goal-tag focus-tag">45min</span><span class="goal-text">' + (focusGoal || '点击设置...') + '</span><span class="check-mini' + (focusDone ? ' done' : '') + '" onclick="event.stopPropagation();toggleHourlyDone(\''+s.id+'\',\'focus\')">' + (focusDone ? '✓' : '✗') + '</span></div>';
         }
 
-        html += '</div>';
-        html += '</div>';
+        card += '</div>';
+        card += '</div>';
+
+        if (isCurrent) {
+          currentSlotHtml = card;
+        } else {
+          html += card;
+        }
       });
+
+      // 当前时段放在最上面
+      if (currentSlotHtml) {
+        html = currentSlotHtml + html;
+      }
 
       html += '<div class="hourly-divider">🌙 晚间</div>';
 
