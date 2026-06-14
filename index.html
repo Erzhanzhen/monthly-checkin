@@ -107,7 +107,7 @@
       margin-top: 10px;
       font-size: 12px;
       color: var(--text-dim);
-
+    }
     .streak-num { color: var(--orange); font-weight: 700; font-size: 15px; }
 
     /* ── Module Card ── */
@@ -681,23 +681,6 @@
       if (tab === 'home') renderCalendar();
     }
 
-    function updateHeader(tab) {
-      const title = document.getElementById('headerTitle');
-      const date = document.getElementById('headerDate');
-      if (tab === 'checkin') {
-        const now = new Date();
-        const endOfDay = new Date(now); endOfDay.setHours(23,59,59,999);
-        const leftDays = Math.max(0, Math.ceil((CYCLE_END - endOfDay) / 86400000));
-        title.innerHTML = leftDays <= 0 ? '🎉 周期结束' : `<span style="font-size:32px;font-weight:900;">${leftDays}</span><span style="font-size:18px;font-weight:700;"> 天</span>`;
-        title.style.cssText = 'font-size:18px;font-weight:600;background:none;-webkit-text-fill-color:var(--text);color:var(--text);';
-        date.textContent = '本月目标倒计时';
-      } else {
-        title.innerHTML = '🎯 月度打卡';
-        title.style.cssText = 'font-size:22px;font-weight:700;letter-spacing:0.5px;background:linear-gradient(135deg,var(--accent-light),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;';
-        date.textContent = '2026.06.12 — 2026.07.12';
-      }
-    }
-
     // 日历翻月
     document.getElementById('calMonthLabel').addEventListener('click', function(e) {
       e.stopPropagation();
@@ -711,9 +694,29 @@
       renderCalGrid();
     });
 
-    // ============ 倒计时 ============
-    const CYCLE_START = new Date(2026, 5, 12); // 2026-06-12
-    const CYCLE_END   = new Date(2026, 6, 12); // 2026-07-12
+    // ============ 倒计时 & Header切换 ============
+    const CYCLE_END = new Date(2026, 6, 12);
+
+    function updateHeader(tab) {
+      const title = document.getElementById('headerTitle');
+      const date = document.getElementById('headerDate');
+      if (tab === 'checkin') {
+        var now = new Date();
+        var eod = new Date(now); eod.setHours(23,59,59,999);
+        var left = Math.max(0, Math.ceil((CYCLE_END - eod) / 86400000));
+        if (left <= 0) {
+          title.textContent = '🎉 周期结束';
+        } else {
+          title.innerHTML = left + ' 天';
+        }
+        title.style.cssText = 'font-size:28px;font-weight:900;color:#fff;letter-spacing:-1px;';
+        date.textContent = '本月目标倒计时';
+      } else {
+        title.innerHTML = '🎯 月度打卡';
+        title.style.cssText = '';
+        date.textContent = '2026.06.12 — 2026.07.12';
+      }
+    }
 
     // ============ 初始化 ============
     render();
