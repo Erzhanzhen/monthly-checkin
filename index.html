@@ -708,9 +708,20 @@
     }
     scheduleMidnightRefresh();
 
-    // ============ Service Worker ============
+    // ============ Service Worker (自动更新) ============
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        // 检测到新 SW 等待激活 → 提示并刷新
+        reg.addEventListener('updatefound', () => {
+          const newSW = reg.installing;
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              // 新版本已就绪，自动刷新
+              window.location.reload();
+            }
+          });
+        });
+      }).catch(() => {});
     }
   </script>
 </body>
