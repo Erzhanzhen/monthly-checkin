@@ -1050,7 +1050,8 @@
           if (habitDone) { habitDots += '<span class="dot done"></span>'; habitDoneCnt++; }
           else { habitDots += '<span class="dot miss"></span>'; habitMissCnt++; }
         } else if (roundNum === currentRound) {
-          habitDots += '<span class="dot current"></span>';
+          if (habitDone) { habitDots += '<span class="dot done"></span>'; habitDoneCnt++; }
+          else { habitDots += '<span class="dot current"></span>'; }
         } else {
           habitDots += '<span class="dot"></span>';
         }
@@ -1060,7 +1061,8 @@
           if (focusDone) { focusDots += '<span class="dot done"></span>'; focusDoneCnt++; }
           else { focusDots += '<span class="dot miss"></span>'; focusMissCnt++; }
         } else if (roundNum === currentRound) {
-          focusDots += '<span class="dot current"></span>';
+          if (focusDone) { focusDots += '<span class="dot done"></span>'; focusDoneCnt++; }
+          else { focusDots += '<span class="dot current"></span>'; }
         } else {
           focusDots += '<span class="dot"></span>';
         }
@@ -1076,7 +1078,8 @@
           if (nightDone) { habitDots += '<span class="dot done"></span>'; habitDoneCnt++; }
           else { habitDots += '<span class="dot miss"></span>'; habitMissCnt++; }
         } else if (rn === currentRound) {
-          habitDots += '<span class="dot current"></span>';
+          if (nightDone) { habitDots += '<span class="dot done"></span>'; habitDoneCnt++; }
+          else { habitDots += '<span class="dot current"></span>'; }
         } else {
           habitDots += '<span class="dot"></span>';
         }
@@ -1085,7 +1088,8 @@
           if (nightDone) { focusDots += '<span class="dot done"></span>'; focusDoneCnt++; }
           else { focusDots += '<span class="dot miss"></span>'; focusMissCnt++; }
         } else if (rn === currentRound) {
-          focusDots += '<span class="dot current"></span>';
+          if (nightDone) { focusDots += '<span class="dot done"></span>'; focusDoneCnt++; }
+          else { focusDots += '<span class="dot current"></span>'; }
         } else {
           focusDots += '<span class="dot"></span>';
         }
