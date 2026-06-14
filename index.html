@@ -352,6 +352,9 @@
 
   <!-- 第二页：打卡 -->
   <div class="tab-page" id="page-checkin">
+    <!-- 倒计时 -->
+    <div class="countdown-wrap" id="countdownWrap"></div>
+
     <!-- 进度条 -->
     <div class="progress-wrap">
       <div class="progress-top">
@@ -693,8 +696,38 @@
       renderCalGrid();
     });
 
+    // ============ 倒计时 ============
+    const CYCLE_START = new Date(2026, 5, 12); // 2026-06-12
+    const CYCLE_END   = new Date(2026, 6, 12); // 2026-07-12
+
+    function renderCountdown() {
+      const now = new Date();
+      const endOfDay = new Date(now); endOfDay.setHours(23,59,59,999);
+      const diffMs = CYCLE_END - endOfDay;
+      const leftDays = Math.max(0, Math.ceil(diffMs / 86400000));
+
+      let text, color;
+      if (leftDays <= 0) {
+        text = '🎉 本周期已结束！';
+        color = 'var(--green)';
+      } else if (leftDays <= 3) {
+        text = `⏰ 还剩 ${leftDays} 天，冲刺！`;
+        color = 'var(--orange)';
+      } else if (leftDays <= 7) {
+        text = `⏳ 还剩 ${leftDays} 天`;
+        color = 'var(--accent-light)';
+      } else {
+        text = `⏳ 还剩 ${leftDays} 天`;
+        color = 'var(--text-dim)';
+      }
+
+      document.getElementById('countdownWrap').innerHTML =
+        `<div class="countdown-text" style="color:${color};text-align:center;font-size:15px;font-weight:600;padding:10px 0 4px;">${text}</div>`;
+    }
+
     // ============ 初始化 ============
     render();
+    renderCountdown();
     renderPrinciples();
     renderCalendar();
 
@@ -706,6 +739,7 @@
       const ms = midnight - now;
       setTimeout(() => {
         render();
+        renderCountdown();
         scheduleMidnightRefresh();
       }, ms + 1000);
     }
