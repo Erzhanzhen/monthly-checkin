@@ -37,12 +37,15 @@
       -webkit-user-select: none;
       user-select: none;
     }
-    body { padding: 16px 16px calc(16px + var(--safe-bottom)); }
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+    }
+    body { padding: var(--safe-top) 16px calc(16px + var(--safe-bottom)); }
 
     /* ── Header ── */
     .header {
       text-align: center;
-      padding: 8px 0 4px;
+      padding: 16px 0 4px;
       margin-bottom: 12px;
     }
     .header h1 {
