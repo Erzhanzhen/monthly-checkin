@@ -58,12 +58,12 @@
       background-clip: text;
     }
     .refresh-btn {
-      position: absolute; top: 16px; right: 16px;
+      position: fixed; top: calc(16px + var(--safe-top, 0px)); right: 16px;
       background: var(--card); border: 1px solid var(--border);
       color: var(--text-dim); font-size: 14px;
       width: 34px; height: 34px; border-radius: 50%;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
-      transition: all 0.2s; z-index: 50;
+      transition: all 0.2s; z-index: 200;
     }
     .refresh-btn:active { background: var(--card-hover); color: var(--accent-light); }
     .header .date-range {
