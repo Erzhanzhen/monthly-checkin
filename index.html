@@ -576,10 +576,10 @@
       <span class="tab-icon">🏠</span>首页
     </button>
     <button class="tab-btn" onclick="switchTab('hourly')">
-      <span class="tab-icon">⏰</span>时刻
+      <span class="tab-icon">⏰</span>时刻打卡
     </button>
     <button class="tab-btn" onclick="switchTab('checkin')">
-      <span class="tab-icon">✅</span>打卡
+      <span class="tab-icon">✅</span>每日目标
     </button>
   </div>
 
@@ -1179,7 +1179,7 @@
         title.style.cssText = 'font-size:28px;font-weight:900;color:#fff;letter-spacing:-1px;';
         date.textContent = '本月目标倒计时';
       } else if (tab === 'hourly') {
-        title.innerHTML = '⏰ 时刻';
+        title.innerHTML = '⏰ 时刻打卡';
         title.style.cssText = '';
         var d = new Date();
         date.textContent = d.getFullYear() + '.' + (d.getMonth()+1) + '.' + d.getDate() + ' ' + ['日','一','二','三','四','五','六'][d.getDay()];
