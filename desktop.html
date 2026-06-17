@@ -718,172 +718,11 @@
   <script src="shared.js"></script>
   <script>
     // ============================================================
-    //  GitHub Sync Module (self-contained)
+    //  GitHub Sync 已在 shared.js 中定义，此处仅绑定 UI 更新
     // ============================================================
-    var githubSync = (function() {
-      var TOKEN_KEY = 'github_sync_token';
-      var REPO_KEY = 'github_sync_repo';
-      var FILE_PATH = 'data/checkin-data.json';
-      var HOURLY_FILE = 'data/checkin-hourly.json';
-
-      function getToken() { return localStorage.getItem(TOKEN_KEY); }
-      function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
-      function getRepo() { return localStorage.getItem(REPO_KEY) || ''; }
-
-      function parseRepo() {
-        var repo = getRepo();
-        var m = repo.match(/github\.com\/([^\/]+)\/([^\/]+?)(?:\.git)?$/);
-        if (!m && repo.indexOf('/') !== -1) m = { 1: repo.split('/')[0], 2: repo.split('/')[1] };
-        if (!m) return null;
-        return { owner: m[1], repo: m[2].replace('.git','') };
-      }
-
-      async function apiCall(method, url, body) {
-        var token = getToken();
-        var headers = { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' };
-        if (body) { headers['Content-Type'] = 'application/json'; }
-        var resp = await fetch(url, { method: method, headers: headers, body: body ? JSON.stringify(body) : undefined });
-        if (!resp.ok) {
-          var err = await resp.text();
-          throw new Error('GitHub API error ' + resp.status + ': ' + err);
-        }
-        if (resp.status === 204) return null;
-        return resp.json();
-      }
-
-      async function verifyToken(token) {
-        try {
-          var headers = { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' };
-          var resp = await fetch('https://api.github.com/user', { headers: headers });
-          if (resp.ok) {
-            var user = await resp.json();
-            return { valid: true, user: user.login };
-          }
-          return { valid: false, error: 'Token 无效或权限不足' };
-        } catch(e) {
-          return { valid: false, error: '网络错误: ' + e.message };
-        }
-      }
-
-      async function getFileSha(path) {
-        try {
-          var r = parseRepo();
-          if (!r) return null;
-          var url = 'https://api.github.com/repos/' + r.owner + '/' + r.repo + '/contents/' + path;
-          var data = await apiCall('GET', url);
-          return data.sha;
-        } catch(e) { return null; }
-      }
-
-      async function uploadFile(path, content) {
-        var r = parseRepo();
-        if (!r) throw new Error('未配置仓库');
-        var url = 'https://api.github.com/repos/' + r.owner + '/' + r.repo + '/contents/' + path;
-        var sha = await getFileSha(path);
-        var body = {
-          message: 'Update ' + path + ' - ' + new Date().toISOString(),
-          content: btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2)))),
-        };
-        if (sha) body.sha = sha;
-        return apiCall('PUT', url, body);
-      }
-
-      async function downloadFile(path) {
-        try {
-          var r = parseRepo();
-          if (!r) return null;
-          var url = 'https://api.github.com/repos/' + r.owner + '/' + r.repo + '/contents/' + path;
-          var data = await apiCall('GET', url);
-          if (data.content) {
-            return JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\s/g,'')))));
-          }
-          return null;
-        } catch(e) { return null; }
-      }
-
-      async function syncOnLoad() {
-        var token = getToken();
-        if (!token || !getRepo()) {
-          updateSyncUI('offline');
-          return;
-        }
-        updateSyncUI('syncing');
-        try {
-          var remoteData = await downloadFile(FILE_PATH);
-          if (remoteData) {
-            var localData = loadData();
-            if (JSON.stringify(remoteData) !== JSON.stringify(localData)) {
-              saveData(mergeData(localData, remoteData));
-            }
-          }
-          var remoteHourly = await downloadFile(HOURLY_FILE);
-          if (remoteHourly) {
-            var localHourly = loadHourly();
-            if (JSON.stringify(remoteHourly) !== JSON.stringify(localHourly)) {
-              saveHourly(mergeData(localHourly, remoteHourly));
-            }
-          }
-          updateSyncUI('synced');
-        } catch(e) {
-          updateSyncUI('error');
-        }
-      }
-
-      async function pushData() {
-        var token = getToken();
-        if (!token || !getRepo()) return;
-        updateSyncUI('syncing');
-        try {
-          await uploadFile(FILE_PATH, loadData());
-          await uploadFile(HOURLY_FILE, loadHourly());
-          updateSyncUI('synced');
-        } catch(e) {
-          updateSyncUI('error');
-        }
-      }
-
-      function mergeData(local, remote) {
-        var merged = {};
-        var keys = Object.keys(local).concat(Object.keys(remote));
-        for (var i = 0; i < keys.length; i++) {
-          var k = keys[i];
-          if (merged[k]) continue;
-          var lv = local[k], rv = remote[k];
-          if (!lv) { merged[k] = rv; }
-          else if (!rv) { merged[k] = lv; }
-          else {
-            merged[k] = Object.assign({}, rv, lv);
-          }
-        }
-        return merged;
-      }
-
-      function updateSyncUI(state) {
-        var pill = document.getElementById('syncPill');
-        var dot = document.getElementById('sidebarSyncDot');
-        var text = document.getElementById('sidebarSyncText');
-        pill.className = 'sync-pill ' + state;
-        if (dot) { dot.className = 'dot-indicator ' + (state === 'synced' ? 'synced' : state === 'error' ? 'error' : ''); }
-        switch(state) {
-          case 'synced': pill.textContent = '☁️ 已同步'; if (text) text.textContent = '已同步'; break;
-          case 'syncing': pill.textContent = '☁️ 同步中...'; if (text) text.textContent = '同步中...'; break;
-          case 'error': pill.textContent = '☁️ 同步失败'; if (text) text.textContent = '同步失败'; break;
-          default: pill.textContent = '☁️ 离线'; if (text) text.textContent = '未同步'; break;
-        }
-      }
-
-      return {
-        getToken: getToken,
-        setToken: setToken,
-        verifyToken: verifyToken,
-        syncOnLoad: syncOnLoad,
-        pushData: pushData,
-        updateSyncUI: updateSyncUI,
-        setRepo: function(r) { localStorage.setItem(REPO_KEY, r); },
-        getRepo: getRepo,
-        parseRepo: parseRepo
-      };
-    })();
+    githubSync.onStatus(function(s) {
+      updateSyncUI(s.status || s);
+    });
 
     // ============================================================
     //  Home Lock (12 seconds)
@@ -1463,6 +1302,7 @@
     }
 
     function skipToken() {
+      localStorage.setItem('github_token_skipped', '1');
       hideTokenModal();
     }
 
@@ -1475,7 +1315,26 @@
         showTokenModal();
         return;
       }
-      githubSync.pushData();
+      githubSync.manualPush().then(function() {
+        showToast('✅ 同步成功');
+      }).catch(function(e) {
+        showToast('❌ 同步失败: ' + e.message);
+      });
+    }
+
+    function updateSyncUI(state) {
+      var pill = document.getElementById('syncPill');
+      var dot = document.getElementById('sidebarSyncDot');
+      var text = document.getElementById('sidebarSyncText');
+      if (pill) pill.className = 'sync-pill ' + state;
+      if (dot) dot.className = 'dot-indicator ' + (state === 'synced' ? 'synced' : state === 'error' ? 'error' : '');
+      switch(state) {
+        case 'synced': if (pill) pill.textContent = '☁️ 已同步'; if (text) text.textContent = '已同步'; break;
+        case 'syncing': if (pill) pill.textContent = '☁️ 同步中...'; if (text) text.textContent = '同步中...'; break;
+        case 'error': if (pill) pill.textContent = '☁️ 同步失败'; if (text) text.textContent = '同步失败'; break;
+        case 'no_token': if (pill) pill.textContent = '☁️ 未设置'; if (text) text.textContent = '未设置Token'; break;
+        default: if (pill) pill.textContent = '☁️ 离线'; if (text) text.textContent = '未同步'; break;
+      }
     }
 
     // ============================================================
@@ -1491,12 +1350,13 @@
         showTokenModal();
       }
 
-      // Try GitHub sync on load
+      // Try GitHub sync on load (async, will trigger re-render via status callback)
       githubSync.syncOnLoad().then(function() {
+        renderDesktopHome();
         renderDesktopCheckin();
-        renderHourly();
+        if (typeof renderHourly === 'function') renderHourly();
         updateSidebarStats();
-      });
+      }).catch(function() {});
 
       // Calendar label double-click to reset
       var calLabel = document.getElementById('calMonthLabel');

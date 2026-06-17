@@ -54,6 +54,9 @@ function loadData() {
 
 function saveData(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  if (typeof githubSync !== 'undefined' && githubSync.syncOnChange) {
+    githubSync.syncOnChange();
+  }
 }
 
 function getTodayChecked() {
@@ -144,7 +147,12 @@ function loadHourly() {
   try { var r = localStorage.getItem(HOURLY_KEY); return r ? JSON.parse(r) : {}; }
   catch(e) { return {}; }
 }
-function saveHourly(data) { localStorage.setItem(HOURLY_KEY, JSON.stringify(data)); }
+function saveHourly(data) {
+  localStorage.setItem(HOURLY_KEY, JSON.stringify(data));
+  if (typeof githubSync !== 'undefined' && githubSync.syncOnChange) {
+    githubSync.syncOnChange();
+  }
+}
 function getTodayHourly() {
   var d = loadHourly();
   var t = getToday();
@@ -199,9 +207,228 @@ function copyYesterdayHourly() {
   var yk = yesterday.getFullYear()+'-'+String(yesterday.getMonth()+1).padStart(2,'0')+'-'+String(yesterday.getDate()).padStart(2,'0');
   if (!d[yk] || Object.keys(d[yk].goals||{}).length === 0) {
     alert('昨日无数据可复制');
-    return;
+    return false;
   }
   d[getToday()] = { goals: Object.assign({}, d[yk].goals), done: {} };
   saveHourly(d);
   renderHourly();
+  return true;
 }
+
+// ============ GitHub 同步模块 ============
+var githubSync = (function() {
+  var API = 'https://api.github.com';
+  var OWNER = 'Erzhanzhen';
+  var REPO = 'monthly-checkin';
+  var PATH = 'sync-data.json';
+  var TOKEN_KEY = 'github_sync_token';
+
+  var _token = null;
+  var _sha = null;
+  var _syncing = false;
+  var _lastSync = null;
+  var _callbacks = [];
+
+  function getToken() {
+    if (_token) return _token;
+    try { _token = localStorage.getItem(TOKEN_KEY); } catch(e) {}
+    return _token;
+  }
+
+  function setToken(t) {
+    _token = t;
+    try { localStorage.setItem(TOKEN_KEY, t); } catch(e) {}
+  }
+
+  function clearToken() {
+    _token = null;
+    try { localStorage.removeItem(TOKEN_KEY); } catch(e) {}
+  }
+
+  function onStatus(fn) { _callbacks.push(fn); }
+
+  function emitStatus(s) {
+    _callbacks.forEach(function(fn) { try { fn(s); } catch(e) {} });
+  }
+
+  function getStatus() {
+    if (_syncing) return 'syncing';
+    if (!getToken()) return 'no_token';
+    if (!navigator.onLine) return 'offline';
+    if (_lastSync && (Date.now() - _lastSync < 30000)) return 'synced';
+    return 'idle';
+  }
+
+  async function api(method, path, body) {
+    var t = getToken();
+    if (!t) throw new Error('No token');
+    var headers = {
+      'Authorization': 'Bearer ' + t,
+      'Accept': 'application/vnd.github+json'
+    };
+    var opts = { method: method, headers: headers };
+    if (body) {
+      headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    var resp = await fetch(API + path, opts);
+    if (resp.status === 401) { clearToken(); throw new Error('Token 无效'); }
+    if (resp.status === 403 && resp.headers.get('X-RateLimit-Remaining') === '0') {
+      throw new Error('API 限流，请稍后');
+    }
+    if (!resp.ok) {
+      var txt = await resp.text().catch(function(){ return ''; });
+      throw new Error('API ' + resp.status + ': ' + txt.slice(0,100));
+    }
+    return resp.json();
+  }
+
+  function buildPayload() {
+    return {
+      version: 1,
+      lastModified: new Date().toISOString(),
+      checkin: loadData(),
+      hourly: loadHourly()
+    };
+  }
+
+  function mergeRemote(localObj, remoteObj) {
+    var out = {};
+    var keys = {};
+    for (var k in localObj) { if (localObj.hasOwnProperty(k)) keys[k] = true; }
+    for (var k in remoteObj) { if (remoteObj.hasOwnProperty(k)) keys[k] = true; }
+    for (var k in keys) {
+      var lv = localObj[k] || {};
+      var rv = remoteObj[k] || {};
+      out[k] = Object.assign({}, rv, lv);
+    }
+    return out;
+  }
+
+  async function syncOnLoad() {
+    var t = getToken();
+    if (!t || !navigator.onLine) { emitStatus('offline'); return; }
+    _syncing = true;
+    emitStatus('syncing');
+    try {
+      var remote = await api('GET', '/repos/' + OWNER + '/' + REPO + '/contents/' + PATH);
+      _sha = remote.sha;
+      var content = JSON.parse(decodeURIComponent(escape(atob(remote.content.replace(/\s/g, '')))));
+      // Merge remote into local
+      var localCheckin = loadData();
+      var localHourly = loadHourly();
+      var mergedCheckin = mergeRemote(localCheckin, content.checkin || {});
+      var mergedHourly = mergeRemote(localHourly, content.hourly || {});
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedCheckin));
+      localStorage.setItem(HOURLY_KEY, JSON.stringify(mergedHourly));
+
+      // Also push local changes back
+      var payload = buildPayload();
+      var putBody = { message: 'sync: ' + new Date().toISOString().slice(0,19), content: btoa(unescape(encodeURIComponent(JSON.stringify(payload)))), sha: _sha };
+      var putResult = await api('PUT', '/repos/' + OWNER + '/' + REPO + '/contents/' + PATH, putBody);
+      _sha = putResult.content.sha;
+      _lastSync = Date.now();
+      emitStatus('synced');
+    } catch(e) {
+      if (e.message && e.message.indexOf('404') !== -1) {
+        // File doesn't exist yet, create it
+        try {
+          var payload = buildPayload();
+          var putBody = { message: 'init sync data', content: btoa(unescape(encodeURIComponent(JSON.stringify(payload)))) };
+          var putResult = await api('PUT', '/repos/' + OWNER + '/' + REPO + '/contents/' + PATH, putBody);
+          _sha = putResult.content.sha;
+          _lastSync = Date.now();
+          emitStatus('synced');
+        } catch(e2) {
+          emitStatus('error');
+        }
+      } else {
+        emitStatus('error');
+      }
+    } finally {
+      _syncing = false;
+    }
+  }
+
+  var _pushTimer = null;
+  function syncOnChange() {
+    if (_pushTimer) clearTimeout(_pushTimer);
+    _pushTimer = setTimeout(function() {
+      var t = getToken();
+      if (!t || !navigator.onLine) return;
+      _syncing = true;
+      emitStatus('syncing');
+      var payload = buildPayload();
+      var body = { message: 'sync: ' + new Date().toISOString().slice(0,19), content: btoa(unescape(encodeURIComponent(JSON.stringify(payload)))) };
+      if (_sha) body.sha = _sha;
+      api('PUT', '/repos/' + OWNER + '/' + REPO + '/contents/' + PATH, body)
+        .then(function(r) { _sha = r.content.sha; _lastSync = Date.now(); _syncing = false; emitStatus('synced'); })
+        .catch(function(e) {
+          if (e.message && e.message.indexOf('409') !== -1) {
+            // Conflict: refetch and merge
+            api('GET', '/repos/' + OWNER + '/' + REPO + '/contents/' + PATH)
+              .then(function(remote) {
+                _sha = remote.sha;
+                var content = JSON.parse(decodeURIComponent(escape(atob(remote.content.replace(/\s/g, '')))));
+                var mergedCheckin = mergeRemote(loadData(), content.checkin || {});
+                var mergedHourly = mergeRemote(loadHourly(), content.hourly || {});
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedCheckin));
+                localStorage.setItem(HOURLY_KEY, JSON.stringify(mergedHourly));
+                var payload2 = buildPayload();
+                var body2 = { message: 'sync (merge): ' + new Date().toISOString().slice(0,19), content: btoa(unescape(encodeURIComponent(JSON.stringify(payload2)))), sha: _sha };
+                return api('PUT', '/repos/' + OWNER + '/' + REPO + '/contents/' + PATH, body2);
+              })
+              .then(function(r2) { _sha = r2.content.sha; _lastSync = Date.now(); _syncing = false; emitStatus('synced'); })
+              .catch(function() { _syncing = false; emitStatus('error'); });
+          } else {
+            _syncing = false;
+            emitStatus('error');
+          }
+        });
+    }, 800);
+  }
+
+  async function verifyToken(t) {
+    try {
+      var resp = await fetch(API + '/user', { headers: { 'Authorization': 'Bearer ' + t, 'Accept': 'application/vnd.github+json' } });
+      if (resp.ok) { var u = await resp.json(); return { valid: true, user: u.login }; }
+      return { valid: false, error: 'Token 无效' };
+    } catch(e) { return { valid: false, error: '网络错误: ' + e.message }; }
+  }
+
+  async function manualPush() {
+    var t = getToken();
+    if (!t) throw new Error('No token');
+    _syncing = true;
+    emitStatus('syncing');
+    try {
+      var payload = buildPayload();
+      var body = { message: 'manual sync: ' + new Date().toISOString().slice(0,19), content: btoa(unescape(encodeURIComponent(JSON.stringify(payload)))) };
+      if (_sha) body.sha = _sha;
+      var r = await api('PUT', '/repos/' + OWNER + '/' + REPO + '/contents/' + PATH, body);
+      _sha = r.content.sha;
+      _lastSync = Date.now();
+      emitStatus('synced');
+      return true;
+    } catch(e) {
+      emitStatus('error');
+      throw e;
+    } finally {
+      _syncing = false;
+    }
+  }
+
+  window.addEventListener('online', function() { syncOnLoad(); });
+
+  return {
+    getToken: getToken,
+    setToken: setToken,
+    clearToken: clearToken,
+    verifyToken: verifyToken,
+    syncOnLoad: syncOnLoad,
+    syncOnChange: syncOnChange,
+    manualPush: manualPush,
+    getStatus: getStatus,
+    onStatus: onStatus
+  };
+})();
