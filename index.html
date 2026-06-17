@@ -639,6 +639,7 @@
     </button>
   </div>
 
+  <script src="shared.js"></script>
   <script>
     // ============ 首页锁 ============
     var homeLocked = true;
@@ -651,18 +652,15 @@
     }
 
     function initHomeLock() {
-      // 先清理旧的 interval
       clearLock();
 
       var overlay = document.getElementById('homeLockOverlay');
       var timerEl = document.getElementById('homeLockTimer');
       var btns = document.querySelectorAll('.tab-btn');
 
-      // 先清除所有锁定状态
       overlay.classList.remove('hidden');
       btns.forEach(function(b) { b.classList.remove('locked'); });
 
-      // 标记时刻/每日目标为锁定
       btns.forEach(function(b) {
         var t = b.getAttribute('onclick');
         if (t.indexOf('hourly') !== -1 || t.indexOf('checkin') !== -1) {
@@ -673,7 +671,6 @@
       homeLocked = true;
       homeLockStart = Date.now();
       timerEl.textContent = homeLockSeconds;
-      // 先更新一次显示
       updateLockTimer();
 
       homeLockInterval = setInterval(updateLockTimer, 200);
@@ -695,159 +692,51 @@
       }
     }
 
-    // 页面刷新时清理旧 interval
     window.addEventListener('beforeunload', clearLock);
-
-    // ============ 原则数据 ============
-    const PRINCIPLES = [
-      '你再不努力老家房子就被别人扒了！',
-      '这个月养成习惯大于一切',
-      '重回初中心流状态，专注一件事',
-      '每小时要有具体产出',
-      '做复利的事，不要每次都重新开始',
-      '慎终如始，则无败事',
-      '先做一个垃圾出来，再求完美',
-      '不舒服就要找原因，不要麻木',
-      '要有方法，而不是假努力'
-    ];
-
-    // ============ 任务数据定义 ============
-    const TASKS = [
-      // 一、习惯目标
-      { id: 'h1', module: '习惯目标', emoji: '💤', title: '早睡目标', text: '10点躺床上，最晚10:30睡着，早6:30起床，确保8小时睡眠' },
-      { id: 'h2', module: '习惯目标', emoji: '🥗', title: '防脱目标', text: '清淡饮食，不吃大油/奶油/奶茶，少喝茶，每周最多1次放纵大餐' },
-      { id: 'h3', module: '习惯目标', emoji: '💪', title: '运动目标', text: '每周4次训练：2次胸肌训练 + 2次腹肌训练' },
-
-      // 二、短视频目标
-      { id: 'v1', module: '短视频目标', emoji: '🔍', title: '研究博主', text: '用AI研究两个博主的人设和选题思路' },
-      { id: 'v2', module: '短视频目标', emoji: '🎬', title: '发布视频', text: '每两天发一个短视频，涨粉2000' },
-
-      // 三、投资目标
-      { id: 'i1', module: '投资目标', emoji: '🏗️', title: '黑客马拉松方案', text: '整理过往黑客松方案，策划完整黑客马拉松方案' },
-      { id: 'i2', module: '投资目标', emoji: '📋', title: '新投资体系搭建', text: '完成一个流程的搭建，推进新投资体系' },
-      { id: 'i3', module: '投资目标', emoji: '🤝', title: '发现项目', text: '想一个发现项目的方法，加一个创始人联系方式' },
-
-      // 四、学习目标
-      { id: 's1', module: '学习目标', emoji: '📖', title: '阅读书籍', text: '看挖掘用户需求的书籍30分钟' },
-      { id: 's2', module: '学习目标', emoji: '🧠', title: '分析博主需求', text: '思考2个抖音博主人设对应的用户需求' },
-      { id: 's3', module: '学习目标', emoji: '💡', title: '创业机会思考', text: '思考一个需求方向的创业项目机会' },
-    ];
-
-    const MODULES = ['习惯目标', '短视频目标', '投资目标', '学习目标'];
-    const MODULE_EMOJIS = { '习惯目标': '🛌', '短视频目标': '📱', '投资目标': '💰', '学习目标': '📚' };
-
-    // ============ 数据管理 ============
-    const STORAGE_KEY = 'monthly_checkin_data';
-    const DATE_KEY = 'monthly_checkin_date';
-
-    function getToday() {
-      const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    }
-
-    function loadData() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : {};
-      } catch { return {}; }
-    }
-
-    function saveData(data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    }
-
-    function getTodayChecked() {
-      const data = loadData();
-      const today = getToday();
-      return data[today] || {};
-    }
-
-    function setTaskChecked(taskId, checked) {
-      const data = loadData();
-      const today = getToday();
-      if (!data[today]) data[today] = {};
-      if (checked) {
-        data[today][taskId] = Date.now();
-      } else {
-        delete data[today][taskId];
-      }
-      // 清理30天前的旧数据
-      const cutoff = new Date(Date.now() - 30 * 24 * 3600 * 1000);
-      for (const k of Object.keys(data)) {
-        if (new Date(k) < cutoff) delete data[k];
-      }
-      saveData(data);
-    }
-
-    function getStreak() {
-      const data = loadData();
-      let streak = 0;
-      const d = new Date();
-      while (true) {
-        const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        const dayData = data[dateStr] || {};
-        const checked = Object.keys(dayData).length;
-        if (checked === 0) break;
-        streak++;
-        d.setDate(d.getDate() - 1);
-      }
-      return streak;
-    }
-
-    function getTotalCheckins() {
-      const data = loadData();
-      let total = 0;
-      for (const day of Object.values(data)) {
-        total += Object.keys(day).length;
-      }
-      return total;
-    }
 
     // ============ 渲染 ============
     function render() {
-      const todayChecked = getTodayChecked();
-      const modulesEl = document.getElementById('modules');
+      var todayChecked = getTodayChecked();
+      var modulesEl = document.getElementById('modules');
       modulesEl.innerHTML = '';
 
-      let totalTasks = TASKS.length;
-      let doneTasks = 0;
+      var totalTasks = TASKS.length;
+      var doneTasks = 0;
 
-      MODULES.forEach(modName => {
-        const modTasks = TASKS.filter(t => t.module === modName);
-        let modDone = 0;
+      MODULES.forEach(function(modName) {
+        var modTasks = TASKS.filter(function(t) { return t.module === modName; });
+        var modDone = 0;
 
-        const moduleDiv = document.createElement('div');
+        var moduleDiv = document.createElement('div');
         moduleDiv.className = 'module';
-        moduleDiv.innerHTML = `
-          <div class="module-header" onclick="this.parentElement.classList.toggle('collapsed')">
-            <span class="module-emoji">${MODULE_EMOJIS[modName]}</span>
-            <span class="module-title">${modName}</span>
-            <span class="module-pct" id="modPct_${modName}">0/${modTasks.length}</span>
-            <span class="module-arrow">▼</span>
-          </div>
-          <div class="task-list" id="taskList_${modName}"></div>
-        `;
+        moduleDiv.innerHTML =
+          '<div class="module-header" onclick="this.parentElement.classList.toggle(\'collapsed\')">' +
+            '<span class="module-emoji">' + MODULE_EMOJIS[modName] + '</span>' +
+            '<span class="module-title">' + modName + '</span>' +
+            '<span class="module-pct" id="modPct_' + modName + '">0/' + modTasks.length + '</span>' +
+            '<span class="module-arrow">▼</span>' +
+          '</div>' +
+          '<div class="task-list" id="taskList_' + modName + '"></div>';
 
-        const taskList = moduleDiv.querySelector('.task-list');
+        var taskList = moduleDiv.querySelector('.task-list');
 
-        modTasks.forEach(task => {
-          const isDone = !!todayChecked[task.id];
+        modTasks.forEach(function(task) {
+          var isDone = !!todayChecked[task.id];
           if (isDone) modDone++;
-          const doneTime = todayChecked[task.id] ? formatTime(todayChecked[task.id]) : '';
+          var doneTime = todayChecked[task.id] ? formatTime(todayChecked[task.id]) : '';
 
-          const item = document.createElement('div');
+          var item = document.createElement('div');
           item.className = 'task-item' + (isDone ? ' done' : '');
-          item.onclick = () => toggleTask(task.id, task.title);
-          item.innerHTML = `
-            <div class="checkbox">✓</div>
-            <div class="task-text">${task.emoji} <b>${task.title}</b><br><span style="font-size:12px;color:#888;">${task.text}</span></div>
-            ${doneTime ? `<div class="task-done-time">${doneTime}</div>` : ''}
-          `;
+          item.onclick = function() { toggleTask(task.id, task.title); };
+          item.innerHTML =
+            '<div class="checkbox">✓</div>' +
+            '<div class="task-text">' + task.emoji + ' <b>' + task.title + '</b><br><span style="font-size:12px;color:#888;">' + task.text + '</span></div>' +
+            (doneTime ? '<div class="task-done-time">' + doneTime + '</div>' : '');
           taskList.appendChild(item);
         });
 
         doneTasks += modDone;
-        moduleDiv.querySelector('.module-pct').textContent = `${modDone}/${modTasks.length}`;
+        moduleDiv.querySelector('.module-pct').textContent = modDone + '/' + modTasks.length;
         if (modDone === modTasks.length) {
           moduleDiv.querySelector('.module-pct').style.color = 'var(--green)';
         }
@@ -855,14 +744,12 @@
         modulesEl.appendChild(moduleDiv);
       });
 
-      // 更新进度条
-      const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+      var pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
       document.getElementById('todayPct').textContent = pct + '%';
       document.getElementById('progressFill').style.width = pct + '%';
       document.getElementById('streakDays').textContent = getStreak();
       document.getElementById('totalCheckins').textContent = getTotalCheckins();
 
-      // 完成庆祝
       if (pct === 100 && doneTasks > 0) {
         document.getElementById('todayPct').style.color = 'var(--green)';
         showToast('🎉 今日全部完成！太棒了！');
@@ -870,19 +757,13 @@
         document.getElementById('todayPct').style.color = 'var(--accent-light)';
       }
 
-      // 每日重置提示
       updateResetHint();
     }
 
-    function formatTime(ts) {
-      const d = new Date(ts);
-      return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-    }
-
     function updateResetHint() {
-      const hint = document.getElementById('resetHint');
-      const today = getToday();
-      const savedDate = localStorage.getItem(DATE_KEY);
+      var hint = document.getElementById('resetHint');
+      var today = getToday();
+      var savedDate = localStorage.getItem(DATE_KEY);
       if (savedDate && savedDate !== today) {
         hint.textContent = '🆕 新的一天！昨天已完成的任务已重置，继续加油！';
       } else {
@@ -893,13 +774,12 @@
 
     // ============ 交互 ============
     function toggleTask(taskId, taskTitle) {
-      const todayChecked = getTodayChecked();
-      const isDone = !!todayChecked[taskId];
+      var todayChecked = getTodayChecked();
+      var isDone = !!todayChecked[taskId];
       setTaskChecked(taskId, !isDone);
 
       if (!isDone) {
         showToast('✅ ' + taskTitle + ' — 完成！');
-        // 触觉反馈（如果支持）
         if (navigator.vibrate) navigator.vibrate(10);
       }
 
@@ -908,8 +788,8 @@
 
     function resetToday() {
       if (confirm('确定要重置今天所有打卡记录吗？')) {
-        const data = loadData();
-        const today = getToday();
+        var data = loadData();
+        var today = getToday();
         delete data[today];
         saveData(data);
         render();
@@ -918,49 +798,48 @@
     }
 
     function showToast(msg) {
-      const toast = document.getElementById('toast');
+      var toast = document.getElementById('toast');
       toast.textContent = msg;
       toast.classList.add('show');
       clearTimeout(toast._timeout);
-      toast._timeout = setTimeout(() => toast.classList.remove('show'), 1800);
+      toast._timeout = setTimeout(function() { toast.classList.remove('show'); }, 1800);
     }
 
     // ============ 日历渲染 ============
-    let calYear, calMonth;
+    var calYear, calMonth;
     function renderCalendar() {
-      const now = new Date();
+      var now = new Date();
       calYear = now.getFullYear();
       calMonth = now.getMonth();
       renderCalGrid();
     }
 
     function renderCalGrid() {
-      const grid = document.getElementById('calGrid');
-      document.getElementById('calMonthLabel').textContent = `${calYear}年${calMonth + 1}月`;
+      var grid = document.getElementById('calGrid');
+      document.getElementById('calMonthLabel').textContent = calYear + '年' + (calMonth + 1) + '月';
       grid.innerHTML = '';
 
-      const firstDay = new Date(calYear, calMonth, 1).getDay();
-      const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-      const today = getToday();
-      const data = loadData();
+      var firstDay = new Date(calYear, calMonth, 1).getDay();
+      var daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+      var today = getToday();
+      var data = loadData();
 
-      // 填充空白
-      for (let i = 0; i < firstDay; i++) {
+      for (var i = 0; i < firstDay; i++) {
         grid.innerHTML += '<div class="cal-day empty"></div>';
       }
 
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const dayData = data[dateStr] || {};
-        const checked = Object.keys(dayData).length;
-        let cls = 'cal-day';
+      for (var d = 1; d <= daysInMonth; d++) {
+        var dateStr = calYear + '-' + String(calMonth+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+        var dayData = data[dateStr] || {};
+        var checked = Object.keys(dayData).length;
+        var cls = 'cal-day';
         if (checked > 0) {
           cls += ' has-data';
           if (checked === TASKS.length) cls += ' done-all';
           else cls += ' done-part';
         }
         if (dateStr === today) cls += ' today';
-        grid.innerHTML += `<div class="${cls}">${d}</div>`;
+        grid.innerHTML += '<div class="' + cls + '">' + d + '</div>';
       }
     }
 
@@ -973,135 +852,39 @@
 
     // ============ 原则渲染 ============
     function renderPrinciples() {
-      const el = document.getElementById('principlesList');
-      el.innerHTML = PRINCIPLES.map((p, i) =>
-        `<div class="principle-item${i===0?' first-principle':''}"><span class="principle-num">${i+1}.</span><span>${p}</span></div>`
-      ).join('');
+      var el = document.getElementById('principlesList');
+      el.innerHTML = PRINCIPLES.map(function(p, i) {
+        return '<div class="principle-item' + (i===0 ? ' first-principle' : '') + '"><span class="principle-num">' + (i+1) + '.</span><span>' + p + '</span></div>';
+      }).join('');
     }
 
     // ============ Tab 切换 ============
     function switchTab(tab) {
-      // 首页锁：未解锁时只能看首页
       if (homeLocked && tab !== 'home') return;
 
-      document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-page').forEach(function(p) { p.classList.remove('active'); });
+      document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
       document.getElementById('page-' + tab).classList.add('active');
-      document.querySelector(`.tab-btn[onclick="switchTab('${tab}')"]`).classList.add('active');
+      document.querySelector('.tab-btn[onclick="switchTab(\'' + tab + '\')"]').classList.add('active');
       updateHeader(tab);
       if (tab === 'home') renderCalendar();
       if (tab === 'hourly') renderHourly();
     }
 
-    // 日历翻月
     document.getElementById('calMonthLabel').addEventListener('click', function(e) {
       e.stopPropagation();
       changeMonth(1);
     });
-    // 双击回当月
     document.getElementById('calMonthLabel').addEventListener('dblclick', function() {
-      const now = new Date();
+      var now = new Date();
       calYear = now.getFullYear();
       calMonth = now.getMonth();
       renderCalGrid();
     });
 
     // ============ 每小时打卡 ============
-    const HOURLY_KEY = 'monthly_hourly_data';
-
-    const WORK_SLOTS = [
-      { id:'s1',  time:'06:30', end:'07:30', label:'06:30-07:30' },
-      { id:'s2',  time:'07:30', end:'08:30', label:'07:30-08:30' },
-      { id:'s3',  time:'08:30', end:'09:30', label:'08:30-09:30' },
-      { id:'s4',  time:'09:30', end:'10:30', label:'09:30-10:30' },
-      { id:'s5',  time:'10:30', end:'11:30', label:'10:30-11:30' },
-      { id:'s6',  time:'11:30', end:'12:30', label:'11:30-12:30' },
-      { id:'s7',  time:'12:30', end:'13:30', label:'12:30-13:30' },
-      { id:'s8',  time:'13:30', end:'14:30', label:'13:30-14:30' },
-      { id:'s9',  time:'14:30', end:'15:30', label:'14:30-15:30' },
-      { id:'s10', time:'15:30', end:'16:30', label:'15:30-16:30' },
-      { id:'s11', time:'16:30', end:'17:30', label:'16:30-17:30' },
-      { id:'s12', time:'17:30', end:'18:30', label:'17:30-18:30' },
-      { id:'s13', time:'18:30', end:'19:30', label:'18:30-19:30' },
-      { id:'s14', time:'19:30', end:'20:30', label:'19:30-20:30' },
-      { id:'s15', time:'20:30', end:'21:30', label:'20:30-21:30' },
-    ];
-
-    const NIGHT_SLOTS = [
-      { id:'n1', time:'21:30', end:'22:00', label:'21:30-22:00', goal:'🌙 自由活动，放松休息' },
-      { id:'n2', time:'22:00', end:'22:30', label:'22:00-22:30', goal:'🛏️ 躺在床上，准备入睡' },
-      { id:'n3', time:'22:30', end:'06:30', label:'22:30前入睡', goal:'😴 入睡，确保充足睡眠' },
-      { id:'n4', time:'06:30', end:'—', label:'06:30起床', goal:'⏰ 早起，开始新的一天' },
-    ];
-
-    function loadHourly() {
-      try { var r = localStorage.getItem(HOURLY_KEY); return r ? JSON.parse(r) : {}; }
-      catch { return {}; }
-    }
-    function saveHourly(data) { localStorage.setItem(HOURLY_KEY, JSON.stringify(data)); }
-    function getTodayHourly() {
-      var d = loadHourly();
-      var t = getToday();
-      if (!d[t]) d[t] = { goals: {}, done: {} };
-      return d[t];
-    }
-
-    function setHourlyGoal(slotId, type, goal) {
-      var d = loadHourly();
-      var t = getToday();
-      if (!d[t]) d[t] = { goals: {}, done: {} };
-      if (!d[t].goals[slotId]) d[t].goals[slotId] = {};
-      d[t].goals[slotId][type] = goal;
-      saveHourly(d);
-    }
-
-    function getHourlyGoal(today, slotId, type) {
-      var g = today.goals[slotId];
-      if (typeof g === 'string') return ''; // 兼容旧数据
-      return (g && g[type]) || '';
-    }
-
-    function toggleHourlyDone(slotId, type) {
-      var d = loadHourly();
-      var t = getToday();
-      if (!d[t]) d[t] = { goals: {}, done: {} };
-      if (!d[t].done[slotId] || typeof d[t].done[slotId] === 'boolean') {
-        d[t].done[slotId] = {};
-      }
-      d[t].done[slotId][type] = !(d[t].done[slotId][type] === true);
-      saveHourly(d);
-      renderHourly();
-    }
-
-    function isHourlyDone(today, slotId, type) {
-      var d = today.done[slotId];
-      if (typeof d === 'boolean') return d; // 兼容旧数据
-      return !!(d && d[type]);
-    }
-
-    function clearAllHourly() {
-      if (!confirm('确定清空今日所有时刻目标和完成状态？')) return;
-      var d = loadHourly();
-      d[getToday()] = { goals: {}, done: {} };
-      saveHourly(d);
-      renderHourly();
-    }
-
-    function copyYesterdayHourly() {
-      var d = loadHourly();
-      var yesterday = new Date(Date.now() - 86400000);
-      var yk = yesterday.getFullYear()+'-'+String(yesterday.getMonth()+1).padStart(2,'0')+'-'+String(yesterday.getDate()).padStart(2,'0');
-      if (!d[yk] || Object.keys(d[yk].goals||{}).length === 0) {
-        alert('昨日无数据可复制');
-        return;
-      }
-      d[getToday()] = { goals: Object.assign({}, d[yk].goals), done: {} };
-      saveHourly(d);
-      renderHourly();
-    }
-
     var hourlyEditingSlot = null;
-    var hourlyEditingType = null;  // 'habit' or 'focus'
+    var hourlyEditingType = null;
 
     function startEditHourly(slotId, type, currentGoal) {
       hourlyEditingSlot = slotId;
@@ -1133,8 +916,7 @@
       var weekDays = ['日','一','二','三','四','五','六'];
       dateEl.textContent = '📅 ' + now.getFullYear()+'.'+(now.getMonth()+1)+'.'+now.getDate()+' 周'+weekDays[now.getDay()];
 
-      // ---- 计算当前轮次 ----
-      var currentRound = 0; // 0 = 还没开始
+      var currentRound = 0;
       var total = WORK_SLOTS.length + NIGHT_SLOTS.length;
       var h = now.getHours(), m = now.getMinutes();
       var nowMin = h * 60 + m;
@@ -1144,18 +926,15 @@
         var slotMin = parseInt(t[0]) * 60 + parseInt(t[1]);
         if (nowMin >= slotMin) currentRound = i + 1;
       }
-      // 晚间轮次
-      if (nowMin >= 21*60+30) currentRound = 16; // 自由活动
-      if (nowMin >= 22*60) currentRound = 17;    // 上床
-      if (nowMin >= 22*60+30) currentRound = 18; // 入睡
+      if (nowMin >= 21*60+30) currentRound = 16;
+      if (nowMin >= 22*60) currentRound = 17;
+      if (nowMin >= 22*60+30) currentRound = 18;
       if (nowMin >= 6*60+30 && nowMin < 22*60+30 && currentRound === 0) currentRound = 1;
 
-      // 检查凌晨（0-6:30），入睡和起床是跨天的
       if (h < 6 || (h === 6 && m < 30)) {
-        currentRound = 18; // 还在入睡时间段
+        currentRound = 18;
       }
 
-      // ---- 统计 ----
       var habitDoneCnt = 0, habitMissCnt = 0;
       var focusDoneCnt = 0, focusMissCnt = 0;
       var habitDots = '', focusDots = '';
@@ -1166,7 +945,6 @@
         var focusDone = isHourlyDone(today, s.id, 'focus');
         var roundNum = i + 1;
 
-        // habit dot
         if (roundNum < currentRound) {
           if (habitDone) { habitDots += '<span class="dot done"></span>'; habitDoneCnt++; }
           else { habitDots += '<span class="dot miss"></span>'; habitMissCnt++; }
@@ -1177,7 +955,6 @@
           habitDots += '<span class="dot"></span>';
         }
 
-        // focus dot
         if (roundNum < currentRound) {
           if (focusDone) { focusDots += '<span class="dot done"></span>'; focusDoneCnt++; }
           else { focusDots += '<span class="dot miss"></span>'; focusMissCnt++; }
@@ -1189,7 +966,6 @@
         }
       }
 
-      // 晚间4轮
       for (var j = 0; j < NIGHT_SLOTS.length; j++) {
         var ns = NIGHT_SLOTS[j];
         var nightDone = typeof today.done[ns.id] === 'boolean' ? today.done[ns.id] : isHourlyDone(today, ns.id, 'habit');
@@ -1204,7 +980,6 @@
         } else {
           habitDots += '<span class="dot"></span>';
         }
-        // 晚间只有一行，focus行也用相同dot
         if (rn < currentRound) {
           if (nightDone) { focusDots += '<span class="dot done"></span>'; focusDoneCnt++; }
           else { focusDots += '<span class="dot miss"></span>'; focusMissCnt++; }
@@ -1216,7 +991,6 @@
         }
       }
 
-      // ---- 渲染顶部信息 ----
       var infoEl = document.getElementById('hourlyRoundInfo');
       if (currentRound === 0 || currentRound > total) {
         infoEl.innerHTML = '<span class="round-num">' + total + '</span> 轮 · 全天结束';
@@ -1234,14 +1008,11 @@
       document.getElementById('hourlyDotsFocus').innerHTML =
         '<span class="dots-label">45min</span><div class="dots">' + focusDots + '</div>';
 
-      // ---- 时段卡片 ----
       var html = '';
       var pastHtml = '';
       var currentSlotId = currentRound > 0 && currentRound <= WORK_SLOTS.length ? WORK_SLOTS[currentRound - 1].id : null;
 
-      // 当前时段
       var currentSlotHtml = '';
-      // 未来时段
       var futureHtml = '';
 
       WORK_SLOTS.forEach(function(s, idx) {
@@ -1286,7 +1057,6 @@
         }
       });
 
-      // 排序: 当前 → 未来 → 已过
       html = currentSlotHtml + futureHtml + pastHtml;
 
       html += '<div class="hourly-divider">🌙 晚间</div>';
@@ -1304,11 +1074,10 @@
 
       document.getElementById('hourlySlots').innerHTML = html;
     }
-    const CYCLE_END = new Date(2026, 6, 12);
 
     function updateHeader(tab) {
-      const title = document.getElementById('headerTitle');
-      const date = document.getElementById('headerDate');
+      var title = document.getElementById('headerTitle');
+      var date = document.getElementById('headerDate');
       if (tab === 'checkin') {
         var now = new Date();
         var eod = new Date(now); eod.setHours(23,59,59,999);
@@ -1339,20 +1108,18 @@
     switchTab('home');
     initHomeLock();
 
-    // 午夜自动刷新（检测日期变化）
     function scheduleMidnightRefresh() {
-      const now = new Date();
-      const midnight = new Date(now);
+      var now = new Date();
+      var midnight = new Date(now);
       midnight.setHours(24, 0, 0, 0);
-      const ms = midnight - now;
-      setTimeout(() => {
+      var ms = midnight - now;
+      setTimeout(function() {
         render();
         scheduleMidnightRefresh();
       }, ms + 1000);
     }
     scheduleMidnightRefresh();
 
-    // ============ Service Worker (自动更新) ============
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').then(function(reg) {
         reg.addEventListener('updatefound', function() {
