@@ -1129,9 +1129,15 @@
     scheduleMidnightRefresh();
 
     if ('serviceWorker' in navigator) {
-      // 彻底卸载所有 SW，不再注册新的
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
+      navigator.serviceWorker.register('sw.js').then(function(reg) {
+        reg.addEventListener('updatefound', function() {
+          var newSW = reg.installing;
+          newSW.addEventListener('statechange', function() {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              window.location.reload();
+            }
+          });
+        });
       }).catch(function() {});
     }
   </script>
