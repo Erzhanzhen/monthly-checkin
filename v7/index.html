@@ -1352,17 +1352,15 @@
     }
     scheduleMidnightRefresh();
 
-    // ============ Service Worker (自动更新) ============
+    // Service Worker — 不注册，仅清除残留
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').then(function(reg) {
-        reg.addEventListener('updatefound', function() {
-          var newSW = reg.installing;
-          newSW.addEventListener('statechange', function() {
-            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-              window.location.reload();
-            }
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
+        if ('caches' in window) {
+          caches.keys().then(function(keys) {
+            keys.forEach(function(key) { caches.delete(key); });
           });
-        });
+        }
       }).catch(function() {});
     }
   </script>
