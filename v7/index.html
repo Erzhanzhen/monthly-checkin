@@ -550,8 +550,8 @@
   <!-- 首页锁遮罩 -->
   <div class="home-lock-overlay" id="homeLockOverlay">
     <div class="home-lock-icon">🔒</div>
-    <div class="home-lock-timer" id="homeLockTimer">12</div>
-    <div class="home-lock-hint">阅读原则 12 秒后解锁</div>
+    <div class="home-lock-timer" id="homeLockTimer">5</div>
+    <div class="home-lock-hint">阅读原则 5 秒后解锁</div>
   </div>
 
   <div class="header" style="position:relative;">
@@ -642,7 +642,7 @@
   <script>
     // ============ 首页锁 ============
     var homeLocked = true;
-    var homeLockSeconds = 12;
+    var homeLockSeconds = 5;
     var homeLockInterval = null;
     var homeLockStart = 0;
 
@@ -1010,21 +1010,21 @@
     const HOURLY_KEY = 'monthly_hourly_data';
 
     const WORK_SLOTS = [
-      { id:'s1',  time:'06:30', end:'07:15', label:'06:30-07:15' },
-      { id:'s2',  time:'07:30', end:'08:15', label:'07:30-08:15' },
-      { id:'s3',  time:'08:30', end:'09:15', label:'08:30-09:15' },
-      { id:'s4',  time:'09:30', end:'10:15', label:'09:30-10:15' },
-      { id:'s5',  time:'10:30', end:'11:15', label:'10:30-11:15' },
-      { id:'s6',  time:'11:30', end:'12:15', label:'11:30-12:15' },
-      { id:'s7',  time:'12:30', end:'13:15', label:'12:30-13:15' },
-      { id:'s8',  time:'13:30', end:'14:15', label:'13:30-14:15' },
-      { id:'s9',  time:'14:30', end:'15:15', label:'14:30-15:15' },
-      { id:'s10', time:'15:30', end:'16:15', label:'15:30-16:15' },
-      { id:'s11', time:'16:30', end:'17:15', label:'16:30-17:15' },
-      { id:'s12', time:'17:30', end:'18:15', label:'17:30-18:15' },
-      { id:'s13', time:'18:30', end:'19:15', label:'18:30-19:15' },
-      { id:'s14', time:'19:30', end:'20:15', label:'19:30-20:15' },
-      { id:'s15', time:'20:30', end:'21:15', label:'20:30-21:15' },
+      { id:'s1',  time:'06:30', end:'07:30', label:'06:30-07:30' },
+      { id:'s2',  time:'07:30', end:'08:30', label:'07:30-08:30' },
+      { id:'s3',  time:'08:30', end:'09:30', label:'08:30-09:30' },
+      { id:'s4',  time:'09:30', end:'10:30', label:'09:30-10:30' },
+      { id:'s5',  time:'10:30', end:'11:30', label:'10:30-11:30' },
+      { id:'s6',  time:'11:30', end:'12:30', label:'11:30-12:30' },
+      { id:'s7',  time:'12:30', end:'13:30', label:'12:30-13:30' },
+      { id:'s8',  time:'13:30', end:'14:30', label:'13:30-14:30' },
+      { id:'s9',  time:'14:30', end:'15:30', label:'14:30-15:30' },
+      { id:'s10', time:'15:30', end:'16:30', label:'15:30-16:30' },
+      { id:'s11', time:'16:30', end:'17:30', label:'16:30-17:30' },
+      { id:'s12', time:'17:30', end:'18:30', label:'17:30-18:30' },
+      { id:'s13', time:'18:30', end:'19:30', label:'18:30-19:30' },
+      { id:'s14', time:'19:30', end:'20:30', label:'19:30-20:30' },
+      { id:'s15', time:'20:30', end:'21:30', label:'20:30-21:30' },
     ];
 
     const NIGHT_SLOTS = [
@@ -1352,15 +1352,17 @@
     }
     scheduleMidnightRefresh();
 
-    // Service Worker 已禁用 — 改为仅清除旧 SW
+    // ============ Service Worker (自动更新) ============
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
-        if ('caches' in window) {
-          caches.keys().then(function(keys) {
-            keys.forEach(function(key) { caches.delete(key); });
+      navigator.serviceWorker.register('sw.js').then(function(reg) {
+        reg.addEventListener('updatefound', function() {
+          var newSW = reg.installing;
+          newSW.addEventListener('statechange', function() {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              window.location.reload();
+            }
           });
-        }
+        });
       }).catch(function() {});
     }
   </script>
