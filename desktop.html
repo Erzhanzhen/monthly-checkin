@@ -1390,6 +1390,24 @@
       }, ms + 1000);
     }
 
+    // Service Worker 强制清除
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        var promises = [];
+        for (var i = 0; i < regs.length; i++) {
+          promises.push(regs[i].unregister().then(function(success) {
+            if (success) console.log('[SW] unregistered: ' + regs[i].scope);
+          }));
+        }
+        if ('caches' in window) {
+          caches.keys().then(function(keys) {
+            keys.forEach(function(key) { caches.delete(key); });
+          });
+        }
+        return Promise.all(promises);
+      }).catch(function() {});
+    }
+
     // Start
     init();
   </script>

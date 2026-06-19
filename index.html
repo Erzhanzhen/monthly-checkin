@@ -1128,11 +1128,22 @@
     }
     scheduleMidnightRefresh();
 
-    // Service Worker 已移除，不再注册
-    // 如果之前有注册的 SW，卸载它
+    // Service Worker 强制清除
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(regs) {
-        for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
+        var promises = [];
+        for (var i = 0; i < regs.length; i++) {
+          promises.push(regs[i].unregister().then(function(success) {
+            if (success) console.log('[SW] unregistered: ' + regs[i].scope);
+          }));
+        }
+        // 同时清除所有缓存
+        if ('caches' in window) {
+          caches.keys().then(function(keys) {
+            keys.forEach(function(key) { caches.delete(key); });
+          });
+        }
+        return Promise.all(promises);
       }).catch(function() {});
     }
   </script>

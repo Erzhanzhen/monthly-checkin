@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>清理中...</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0f0f1a;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #2a2a40;
+      border-top: 4px solid #6c5ce7;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    p { color: #888; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="spinner"></div>
+  <p>正在清理旧版本缓存...</p>
+  <p id="status"></p>
+
+  <script>
+    var statusEl = document.getElementById('status');
+
+    function log(msg) {
+      statusEl.textContent = msg;
+    }
+
+    // Step 1: 注销当前 scope 下的所有 SW（包括父级 scope）
+    function unregisterAllSW() {
+      log('正在卸载旧 Service Worker...');
+      return navigator.serviceWorker.getRegistrations().then(function(regs) {
+        return Promise.all(regs.map(function(reg) {
+          log('卸载: ' + reg.scope);
+          return reg.unregister();
+        }));
+      });
+    }
+
+    // Step 2: 强制清除所有缓存
+    function clearAllCaches() {
+      log('正在清除缓存...');
+      if ('caches' in window) {
+        return caches.keys().then(function(keys) {
+          return Promise.all(keys.map(function(key) {
+            return caches.delete(key);
+          }));
+        });
+      }
+      return Promise.resolve();
+    }
+
+    // Step 3: 尝试向父级 scope 发送消息清除 SW
+    function sendUnregisterMessage() {
+      return new Promise(function(resolve) {
+        // 通过 iframe 方式强制触发父级 SW 的注销
+        // 用 fetch 触发 sw.js 的 activate 事件（新版是自毁型）
+        var urls = [
+          '../sw.js?' + Date.now(),
+          '../index.html?' + Date.now()
+        ];
+        Promise.all(urls.map(function(u) {
+          return fetch(u, { cache: 'no-store' }).catch(function() {});
+        })).then(resolve).catch(resolve);
+      });
+    }
+
+    function goHome() {
+      log('清理完成，正在跳转...');
+      setTimeout(function() {
+        window.location.replace('../');
+      }, 1500);
+    }
+
+    if ('serviceWorker' in navigator) {
+      unregisterAllSW()
+        .then(clearAllCaches)
+        .then(sendUnregisterMessage)
+        .then(function() {
+          log('清理完成! 正在跳转...');
+          goHome();
+        })
+        .catch(function(err) {
+          log('部分清理完成，正在跳转...');
+          goHome();
+        });
+    } else {
+      log('无需清理，正在跳转...');
+      goHome();
+    }
+  </script>
+</body>
+</html>
