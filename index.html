@@ -698,11 +698,18 @@
         return;
       }
 
-      // 否则从当前level+1开始计时，并先切换到对应页面
-      var startLevel = unlockLevel + 1;
-      switchToTab(tab);
+      // 必须从当前unlockLevel+1开始，且必须在对应页面计时
+      // 如果用户在非对应页面，先强制跳回
+      var targetLevel = unlockLevel + 1;
+      var targetTab = '';
+      if (targetLevel === 1) targetTab = 'home';
+      else if (targetLevel === 2) targetTab = 'checkin';
+      else targetTab = 'hourly';
+
+      // 强制切换到当前要解锁的页面
+      switchToTab(targetTab);
       bar.classList.remove('hidden');
-      updateLockUI(startLevel);
+      updateLockUI(targetLevel);
 
       clearLockInterval();
       lockStart = Date.now();
@@ -711,22 +718,45 @@
         var left = Math.max(0, LOCK_SECONDS - elapsed);
         document.getElementById('lockTimer').textContent = Math.ceil(left);
 
+        // 如果用户滑走了，暂停计时
+        var currentPage = getCurrentActiveTab();
+        if (currentPage !== targetTab) {
+          lockStart = Date.now(); // 重置计时
+          updateLockUI(targetLevel);
+          return;
+        }
+
         if (left <= 0) {
-          unlockLevel = startLevel;
+          unlockLevel = targetLevel;
           updateProgressBars();
 
           if (unlockLevel >= needed) {
+            // 目标页面已解锁，切换到目标页面
             clearLockInterval();
             bar.classList.add('hidden');
             updateTabLockStyles();
+            if (tab !== targetTab) {
+              switchToTab(tab);
+            }
           } else {
-            startLevel = unlockLevel + 1;
-            updateLockUI(startLevel);
+            // 继续下一层，强制跳转
+            targetLevel = unlockLevel + 1;
+            if (targetLevel === 2) targetTab = 'checkin';
+            else targetTab = 'hourly';
+            switchToTab(targetTab);
+            updateLockUI(targetLevel);
             lockStart = Date.now();
             document.getElementById('lockTimer').textContent = LOCK_SECONDS;
           }
         }
       }, 200);
+    }
+
+    function getCurrentActiveTab() {
+      if (document.getElementById('page-home').classList.contains('active')) return 'home';
+      if (document.getElementById('page-checkin').classList.contains('active')) return 'checkin';
+      if (document.getElementById('page-hourly').classList.contains('active')) return 'hourly';
+      return 'home';
     }
 
     function updateLockUI(level) {
