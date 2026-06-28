@@ -550,8 +550,8 @@
   <!-- 首页锁遮罩 -->
   <div class="home-lock-overlay" id="homeLockOverlay">
     <div class="home-lock-icon">🔒</div>
-    <div class="home-lock-timer" id="homeLockTimer">5</div>
-    <div class="home-lock-hint">阅读原则 5 秒后解锁</div>
+    <div class="home-lock-timer" id="homeLockTimer">12</div>
+    <div class="home-lock-hint">阅读原则 12 秒后解锁</div>
   </div>
 
   <div class="header" style="position:relative;">
@@ -642,7 +642,7 @@
   <script>
     // ============ 首页锁 ============
     var homeLocked = true;
-    var homeLockSeconds = 5;
+    var homeLockSeconds = 12;
     var homeLockInterval = null;
     var homeLockStart = 0;
 
@@ -701,14 +701,15 @@
     // ============ 原则数据 ============
     const PRINCIPLES = [
       '你再不努力老家房子就被别人扒了！',
-      '好习惯大于一切',
-      '每小时有具体产出',
-      '进入心流，保持专注',
-      '做复利的事，不重新开始',
-      '慎终如则，善始善终',
-      '先做一个垃圾出来',
-      '不舒服就要找原因',
-      '要有方法，而不是假努力'
+      '一切事情都向好习惯让步！',
+      '每小时要有具体产出，只专注一件事',
+      '像初中一样专注一件事，进入心流',
+      '做复利的事，不要一直重新开始',
+      '慎终如始，则无败事',
+      '先做一个垃圾出来，逐渐完美',
+      '不舒服就要找原因，不要麻木',
+      '做事要有方法，而不是瞎努力',
+      '读书工作要不断复读重复'
     ];
 
     // ============ 任务数据定义 ============
