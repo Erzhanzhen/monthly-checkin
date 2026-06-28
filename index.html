@@ -249,6 +249,10 @@
     .tab-btn .tab-icon { font-size: 18px; display: block; margin-bottom: 2px; }
     .tab-page { display: none; }
     .tab-page.active { display: block; }
+    .pages-wrapper {
+      overflow-x: hidden; position: relative;
+      touch-action: pan-y; /* 允许垂直滚动，水平由JS控制 */
+    }
     #page-checkin { padding-bottom: 80px; }
     #page-hourly { padding-bottom: 80px; }
 
@@ -574,7 +578,8 @@
     <button class="refresh-btn" onclick="location.reload(true)" title="刷新页面">🔄</button>
   </div>
 
-  <!-- ====== 页面容器 ====== -->
+  <!-- ====== 页面容器（支持左右滑动） ====== -->
+  <div class="pages-wrapper" id="pagesWrapper">
   <!-- 首页：原则 + 日历 -->
   <div class="tab-page active" id="page-home">
     <!-- 原则卡片 -->
@@ -639,6 +644,7 @@
       <button class="reset-btn" onclick="resetToday()">🔄 重置今日打卡</button>
     </div>
   </div>
+  </div><!-- /pages-wrapper -->
 
   <!-- 底部 Tab -->
   <div class="tab-bar">
@@ -740,9 +746,13 @@
 
     // 实际切换Tab
     function switchToTab(tab) {
+      var currentActive = document.querySelector('.tab-page.active');
+      var targetPage = document.getElementById('page-' + tab);
+      if (currentActive === targetPage) return;
+
       document.querySelectorAll('.tab-page').forEach(function(p) { p.classList.remove('active'); });
       document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
-      document.getElementById('page-' + tab).classList.add('active');
+      targetPage.classList.add('active');
       var btns = document.querySelectorAll('.tab-btn');
       for (var i = 0; i < btns.length; i++) {
         if (btns[i].getAttribute('onclick').indexOf("'" + tab + "'") !== -1) {
@@ -753,6 +763,49 @@
       if (tab === 'home') renderCalendar();
       if (tab === 'hourly') renderHourly();
     }
+
+    // ============ 左右滑动切换 ============
+    var TAB_ORDER = ['home', 'checkin', 'hourly'];
+    var touchStartX = 0;
+    var touchStartY = 0;
+    var touchMoved = false;
+
+    function getCurrentTabIndex() {
+      for (var i = 0; i < TAB_ORDER.length; i++) {
+        if (document.getElementById('page-' + TAB_ORDER[i]).classList.contains('active')) return i;
+      }
+      return 0;
+    }
+
+    document.addEventListener('touchstart', function(e) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchMoved = false;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function(e) {
+      touchMoved = true;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function(e) {
+      if (!touchMoved) return;
+      var dx = (e.changedTouches[0] || {}).clientX - touchStartX;
+      var dy = (e.changedTouches[0] || {}).clientY - touchStartY;
+      var absDx = Math.abs(dx);
+      var absDy = Math.abs(dy);
+
+      // 只在水平滑动明显大于垂直时触发（阈值40px，且水平是垂直的2倍以上）
+      if (absDx > 40 && absDx > absDy * 2) {
+        var currentIdx = getCurrentTabIndex();
+        if (dx < 0 && currentIdx < TAB_ORDER.length - 1) {
+          // 左滑 → 下一页
+          switchTab(TAB_ORDER[currentIdx + 1]);
+        } else if (dx > 0 && currentIdx > 0) {
+          // 右滑 → 上一页
+          switchTab(TAB_ORDER[currentIdx - 1]);
+        }
+      }
+    });
 
     function updateTabLockStyles() {
       var btns = document.querySelectorAll('.tab-btn');
