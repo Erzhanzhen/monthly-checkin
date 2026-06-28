@@ -252,22 +252,46 @@
     #page-checkin { padding-bottom: 80px; }
     #page-hourly { padding-bottom: 80px; }
 
-    /* ── 首页锁 ── */
-    .home-lock-overlay {
-      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-      background: linear-gradient(transparent, rgba(15,15,26,0.95) 30%);
-      display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-      pointer-events: none;
-      padding-bottom: calc(80px + var(--safe-bottom,16px));
-      transition: opacity 0.3s;
+    /* ── 锁遮罩 ── */
+    .lock-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(15,15,26,0.97);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      transition: opacity 0.4s;
+      gap: 10px;
     }
-    .home-lock-overlay.hidden { opacity: 0; pointer-events: none !important; }
-    .home-lock-icon { font-size: 28px; margin-bottom: 8px; }
-    .home-lock-timer {
-      font-size: 32px; font-weight: 900; color: var(--accent-light);
+    .lock-overlay.hidden { opacity: 0; pointer-events: none !important; }
+    .lock-icon { font-size: 36px; margin-bottom: 4px; }
+    .lock-label { font-size: 15px; font-weight: 700; color: var(--accent-light); margin-bottom: 2px; }
+    .lock-timer {
+      font-size: 48px; font-weight: 900; color: var(--accent-light);
       margin-bottom: 4px;
     }
-    .home-lock-hint { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; }
+    .lock-hint { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+    .lock-progress {
+      display: flex; gap: 6px; margin-bottom: 12px;
+    }
+    .lock-step {
+      width: 40px; height: 4px; border-radius: 2px;
+      background: var(--border); transition: background 0.3s;
+    }
+    .lock-step.done { background: var(--green); }
+    .lock-step.current { background: var(--accent-light); }
+    .lock-page-preview {
+      max-height: 35vh; overflow-y: auto; width: 90%;
+      opacity: 0.4; font-size: 13px; color: var(--text-dim);
+      text-align: center; line-height: 1.8;
+    }
+    .lock-page-preview .principles-list {
+      text-align: left; display: inline-block;
+    }
+    .lock-page-preview .principle-item {
+      padding: 3px 0; font-size: 13px;
+    }
+    .lock-page-preview .preview-title {
+      font-size: 14px; font-weight: 700; color: var(--accent-light);
+      margin-bottom: 8px;
+    }
 
     /* ── Hourly ── */
     .hourly-date-header {
@@ -547,11 +571,18 @@
 </head>
 <body>
 
-  <!-- 首页锁遮罩 -->
-  <div class="home-lock-overlay" id="homeLockOverlay">
-    <div class="home-lock-icon">🔒</div>
-    <div class="home-lock-timer" id="homeLockTimer">12</div>
-    <div class="home-lock-hint">阅读原则 12 秒后解锁</div>
+  <!-- 锁遮罩 -->
+  <div class="lock-overlay" id="lockOverlay">
+    <div class="lock-icon" id="lockIcon">🔒</div>
+    <div class="lock-label" id="lockLabel">阅读原则</div>
+    <div class="lock-timer" id="lockTimer">12</div>
+    <div class="lock-hint" id="lockHint">秒后解锁此页</div>
+    <div class="lock-progress" id="lockProgress">
+      <div class="lock-step" id="step1"></div>
+      <div class="lock-step" id="step2"></div>
+      <div class="lock-step" id="step3"></div>
+    </div>
+    <div class="lock-page-preview" id="lockPreview"></div>
   </div>
 
   <div class="header" style="position:relative;">
@@ -640,63 +671,165 @@
   </div>
 
   <script>
-    // ============ 首页锁 ============
-    var homeLocked = true;
-    var homeLockSeconds = 12;
-    var homeLockInterval = null;
-    var homeLockStart = 0;
+    // ============ 三层递进锁 ============
+    var LOCK_SECONDS = 12;
+    // unlockLevel: 0=全锁, 1=原则解锁, 2=每日目标解锁, 3=全部解锁
+    var unlockLevel = 0;
+    var lockInterval = null;
+    var lockStart = 0;
+    var currentLockTab = 'home'; // 当前正在解锁的Tab
 
-    function clearLock() {
-      if (homeLockInterval) { clearInterval(homeLockInterval); homeLockInterval = null; }
+    function clearLockInterval() {
+      if (lockInterval) { clearInterval(lockInterval); lockInterval = null; }
     }
 
-    function initHomeLock() {
-      // 先清理旧的 interval
-      clearLock();
+    // 根据要去的Tab，计算需要达到的unlockLevel
+    function requiredLevel(tab) {
+      if (tab === 'home') return 1;
+      if (tab === 'checkin') return 2;
+      if (tab === 'hourly') return 3;
+      return 1;
+    }
 
-      var overlay = document.getElementById('homeLockOverlay');
-      var timerEl = document.getElementById('homeLockTimer');
-      var btns = document.querySelectorAll('.tab-btn');
+    // 根据level获取锁的标签
+    function getLockLabel(level) {
+      if (level === 1) return '阅读原则';
+      if (level === 2) return '浏览每日目标';
+      if (level === 3) return '浏览时刻打卡';
+      return '阅读原则';
+    }
 
-      // 先清除所有锁定状态
+    // 获取预览内容
+    function getLockPreview(level) {
+      if (level === 1) {
+        return '<div class="preview-title">📜 堂堂的原则</div><div class="principles-list">' +
+          PRINCIPLES.map(function(p, i) {
+            return '<div class="principle-item">' + (i+1) + '. ' + p + '</div>';
+          }).join('') + '</div>';
+      }
+      if (level === 2) {
+        return '<div class="preview-title">✅ 每日目标</div><div class="principles-list">' +
+          TASKS.map(function(t) {
+            return '<div class="principle-item">' + t.emoji + ' ' + t.title + '</div>';
+          }).join('') + '</div>';
+      }
+      if (level === 3) {
+        var allSlots = WORK_SLOTS.concat(NIGHT_SLOTS);
+        return '<div class="preview-title">⏰ 时刻打卡</div><div class="principles-list">' +
+          allSlots.map(function(s) {
+            return '<div class="principle-item">' + s.label + ' ' + (s.goal || '') + '</div>';
+          }).join('') + '</div>';
+      }
+      return '';
+    }
+
+    function showLockOverlay(tab) {
+      currentLockTab = tab;
+      var needed = requiredLevel(tab);
+      var overlay = document.getElementById('lockOverlay');
+
+      // 如果已经达到所需level，直接解锁
+      if (unlockLevel >= needed) {
+        overlay.classList.add('hidden');
+        switchToTab(tab);
+        return;
+      }
+
+      // 否则从当前level+1开始计时
+      var startLevel = unlockLevel + 1;
       overlay.classList.remove('hidden');
-      btns.forEach(function(b) { b.classList.remove('locked'); });
+      updateLockUI(startLevel, LOCK_SECONDS);
 
-      // 标记时刻/每日目标为锁定
-      btns.forEach(function(b) {
-        var t = b.getAttribute('onclick');
-        if (t.indexOf('hourly') !== -1 || t.indexOf('checkin') !== -1) {
-          b.classList.add('locked');
+      clearLockInterval();
+      lockStart = Date.now();
+      lockInterval = setInterval(function() {
+        var elapsed = (Date.now() - lockStart) / 1000;
+        var left = Math.max(0, LOCK_SECONDS - elapsed);
+        var display = Math.ceil(left);
+        document.getElementById('lockTimer').textContent = display;
+
+        if (left <= 0) {
+          // 当前层级解锁
+          unlockLevel = startLevel;
+          updateProgressBars();
+          updateLockUI(startLevel, 0);
+
+          if (unlockLevel >= needed) {
+            // 全部所需层级解锁完毕
+            clearLockInterval();
+            overlay.classList.add('hidden');
+            switchToTab(tab);
+          } else {
+            // 还有下一层，继续计时
+            startLevel = unlockLevel + 1;
+            updateLockUI(startLevel, LOCK_SECONDS);
+            lockStart = Date.now();
+            document.getElementById('lockTimer').textContent = LOCK_SECONDS;
+          }
         }
-      });
-
-      homeLocked = true;
-      homeLockStart = Date.now();
-      timerEl.textContent = homeLockSeconds;
-      // 先更新一次显示
-      updateLockTimer();
-
-      homeLockInterval = setInterval(updateLockTimer, 200);
+      }, 200);
     }
 
-    function updateLockTimer() {
-      var elapsed = (Date.now() - homeLockStart) / 1000;
-      var left = Math.max(0, homeLockSeconds - elapsed);
-      var display = Math.ceil(left);
-      var timerEl = document.getElementById('homeLockTimer');
-      timerEl.textContent = display;
+    function updateLockUI(level, seconds) {
+      document.getElementById('lockLabel').textContent = getLockLabel(level);
+      document.getElementById('lockHint').textContent = seconds + ' 秒后解锁此页';
+      document.getElementById('lockTimer').textContent = seconds;
+      document.getElementById('lockPreview').innerHTML = getLockPreview(level);
+      updateProgressBars();
+    }
 
-      if (left <= 0) {
-        clearInterval(homeLockInterval);
-        homeLockInterval = null;
-        homeLocked = false;
-        document.getElementById('homeLockOverlay').classList.add('hidden');
-        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('locked'); });
+    function updateProgressBars() {
+      for (var i = 1; i <= 3; i++) {
+        var step = document.getElementById('step' + i);
+        step.className = 'lock-step';
+        if (i <= unlockLevel) step.classList.add('done');
+        else if (i === unlockLevel + 1) step.classList.add('current');
       }
     }
 
-    // 页面刷新时清理旧 interval
-    window.addEventListener('beforeunload', clearLock);
+    // 实际切换Tab
+    function switchToTab(tab) {
+      document.querySelectorAll('.tab-page').forEach(function(p) { p.classList.remove('active'); });
+      document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      document.getElementById('page-' + tab).classList.add('active');
+      var btns = document.querySelectorAll('.tab-btn');
+      for (var i = 0; i < btns.length; i++) {
+        if (btns[i].getAttribute('onclick').indexOf("'" + tab + "'") !== -1) {
+          btns[i].classList.add('active');
+        }
+      }
+      updateHeader(tab);
+      if (tab === 'home') renderCalendar();
+      if (tab === 'hourly') renderHourly();
+      updateTabLockStyles();
+    }
+
+    function updateTabLockStyles() {
+      var btns = document.querySelectorAll('.tab-btn');
+      btns.forEach(function(b) {
+        var t = b.getAttribute('onclick');
+        var tab = '';
+        if (t.indexOf('home') !== -1) tab = 'home';
+        else if (t.indexOf('checkin') !== -1) tab = 'checkin';
+        else if (t.indexOf('hourly') !== -1) tab = 'hourly';
+        if (unlockLevel < requiredLevel(tab)) {
+          b.classList.add('locked');
+        } else {
+          b.classList.remove('locked');
+        }
+      });
+    }
+
+    function initLocks() {
+      unlockLevel = 0;
+      updateProgressBars();
+      updateTabLockStyles();
+      // 初始显示首页锁
+      showLockOverlay('home');
+    }
+
+    // 页面刷新时清理
+    window.addEventListener('beforeunload', clearLockInterval);
 
     // ============ 原则数据 ============
     const PRINCIPLES = [
@@ -982,16 +1115,7 @@
 
     // ============ Tab 切换 ============
     function switchTab(tab) {
-      // 首页锁：未解锁时只能看首页
-      if (homeLocked && tab !== 'home') return;
-
-      document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById('page-' + tab).classList.add('active');
-      document.querySelector(`.tab-btn[onclick="switchTab('${tab}')"]`).classList.add('active');
-      updateHeader(tab);
-      if (tab === 'home') renderCalendar();
-      if (tab === 'hourly') renderHourly();
+      showLockOverlay(tab);
     }
 
     // 日历翻月
@@ -1342,8 +1466,8 @@
     render();
     renderPrinciples();
     renderCalendar();
-    switchTab('home');
-    initHomeLock();
+    switchToTab('home');
+    initLocks();
 
     // 午夜自动刷新（检测日期变化）
     function scheduleMidnightRefresh() {
