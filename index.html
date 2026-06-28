@@ -252,46 +252,31 @@
     #page-checkin { padding-bottom: 80px; }
     #page-hourly { padding-bottom: 80px; }
 
-    /* ── 锁遮罩 ── */
-    .lock-overlay {
-      position: fixed; inset: 0; z-index: 200;
-      background: rgba(15,15,26,0.97);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      transition: opacity 0.4s;
-      gap: 10px;
+    /* ── 底部锁条 ── */
+    .lock-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      background: linear-gradient(transparent, rgba(15,15,26,0.95) 30%);
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+      pointer-events: none;
+      padding-bottom: calc(80px + var(--safe-bottom,16px));
+      transition: opacity 0.3s;
     }
-    .lock-overlay.hidden { opacity: 0; pointer-events: none !important; }
-    .lock-icon { font-size: 36px; margin-bottom: 4px; }
-    .lock-label { font-size: 15px; font-weight: 700; color: var(--accent-light); margin-bottom: 2px; }
+    .lock-bar.hidden { opacity: 0; pointer-events: none !important; }
+    .lock-icon { font-size: 28px; margin-bottom: 6px; }
     .lock-timer {
-      font-size: 48px; font-weight: 900; color: var(--accent-light);
-      margin-bottom: 4px;
+      font-size: 36px; font-weight: 900; color: var(--accent-light);
+      margin-bottom: 2px;
     }
-    .lock-hint { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+    .lock-hint { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
     .lock-progress {
-      display: flex; gap: 6px; margin-bottom: 12px;
+      display: flex; gap: 6px; margin-bottom: 8px;
     }
     .lock-step {
-      width: 40px; height: 4px; border-radius: 2px;
+      width: 36px; height: 3px; border-radius: 2px;
       background: var(--border); transition: background 0.3s;
     }
     .lock-step.done { background: var(--green); }
     .lock-step.current { background: var(--accent-light); }
-    .lock-page-preview {
-      max-height: 35vh; overflow-y: auto; width: 90%;
-      opacity: 0.4; font-size: 13px; color: var(--text-dim);
-      text-align: center; line-height: 1.8;
-    }
-    .lock-page-preview .principles-list {
-      text-align: left; display: inline-block;
-    }
-    .lock-page-preview .principle-item {
-      padding: 3px 0; font-size: 13px;
-    }
-    .lock-page-preview .preview-title {
-      font-size: 14px; font-weight: 700; color: var(--accent-light);
-      margin-bottom: 8px;
-    }
 
     /* ── Hourly ── */
     .hourly-date-header {
@@ -571,18 +556,16 @@
 </head>
 <body>
 
-  <!-- 锁遮罩 -->
-  <div class="lock-overlay" id="lockOverlay">
+  <!-- 底部锁条 -->
+  <div class="lock-bar" id="lockBar">
     <div class="lock-icon" id="lockIcon">🔒</div>
-    <div class="lock-label" id="lockLabel">阅读原则</div>
     <div class="lock-timer" id="lockTimer">12</div>
-    <div class="lock-hint" id="lockHint">秒后解锁此页</div>
+    <div class="lock-hint" id="lockHint">阅读原则 12 秒后解锁</div>
     <div class="lock-progress" id="lockProgress">
       <div class="lock-step" id="step1"></div>
       <div class="lock-step" id="step2"></div>
       <div class="lock-step" id="step3"></div>
     </div>
-    <div class="lock-page-preview" id="lockPreview"></div>
   </div>
 
   <div class="header" style="position:relative;">
@@ -677,13 +660,12 @@
     var unlockLevel = 0;
     var lockInterval = null;
     var lockStart = 0;
-    var currentLockTab = 'home'; // 当前正在解锁的Tab
+    var currentLockTab = 'home';
 
     function clearLockInterval() {
       if (lockInterval) { clearInterval(lockInterval); lockInterval = null; }
     }
 
-    // 根据要去的Tab，计算需要达到的unlockLevel
     function requiredLevel(tab) {
       if (tab === 'home') return 1;
       if (tab === 'checkin') return 2;
@@ -691,78 +673,49 @@
       return 1;
     }
 
-    // 根据level获取锁的标签
-    function getLockLabel(level) {
-      if (level === 1) return '阅读原则';
-      if (level === 2) return '浏览每日目标';
-      if (level === 3) return '浏览时刻打卡';
-      return '阅读原则';
-    }
-
-    // 获取预览内容
-    function getLockPreview(level) {
-      if (level === 1) {
-        return '<div class="preview-title">📜 堂堂的原则</div><div class="principles-list">' +
-          PRINCIPLES.map(function(p, i) {
-            return '<div class="principle-item">' + (i+1) + '. ' + p + '</div>';
-          }).join('') + '</div>';
-      }
-      if (level === 2) {
-        return '<div class="preview-title">✅ 每日目标</div><div class="principles-list">' +
-          TASKS.map(function(t) {
-            return '<div class="principle-item">' + t.emoji + ' ' + t.title + '</div>';
-          }).join('') + '</div>';
-      }
-      if (level === 3) {
-        var allSlots = WORK_SLOTS.concat(NIGHT_SLOTS);
-        return '<div class="preview-title">⏰ 时刻打卡</div><div class="principles-list">' +
-          allSlots.map(function(s) {
-            return '<div class="principle-item">' + s.label + ' ' + (s.goal || '') + '</div>';
-          }).join('') + '</div>';
-      }
+    function getLockHint(level) {
+      if (level === 1) return '阅读原则 ' + LOCK_SECONDS + ' 秒后解锁';
+      if (level === 2) return '浏览每日目标 ' + LOCK_SECONDS + ' 秒后解锁';
+      if (level === 3) return '浏览时刻打卡 ' + LOCK_SECONDS + ' 秒后解锁';
       return '';
     }
 
     function showLockOverlay(tab) {
       currentLockTab = tab;
       var needed = requiredLevel(tab);
-      var overlay = document.getElementById('lockOverlay');
+      var bar = document.getElementById('lockBar');
 
       // 如果已经达到所需level，直接解锁
       if (unlockLevel >= needed) {
-        overlay.classList.add('hidden');
+        bar.classList.add('hidden');
         switchToTab(tab);
         return;
       }
 
-      // 否则从当前level+1开始计时
+      // 否则从当前level+1开始计时，并先切换到对应页面
       var startLevel = unlockLevel + 1;
-      overlay.classList.remove('hidden');
-      updateLockUI(startLevel, LOCK_SECONDS);
+      switchToTab(tab);
+      bar.classList.remove('hidden');
+      updateLockUI(startLevel);
 
       clearLockInterval();
       lockStart = Date.now();
       lockInterval = setInterval(function() {
         var elapsed = (Date.now() - lockStart) / 1000;
         var left = Math.max(0, LOCK_SECONDS - elapsed);
-        var display = Math.ceil(left);
-        document.getElementById('lockTimer').textContent = display;
+        document.getElementById('lockTimer').textContent = Math.ceil(left);
 
         if (left <= 0) {
-          // 当前层级解锁
           unlockLevel = startLevel;
           updateProgressBars();
-          updateLockUI(startLevel, 0);
 
           if (unlockLevel >= needed) {
-            // 全部所需层级解锁完毕
             clearLockInterval();
-            overlay.classList.add('hidden');
-            switchToTab(tab);
+            bar.classList.add('hidden');
+            updateTabLockStyles();
           } else {
-            // 还有下一层，继续计时
             startLevel = unlockLevel + 1;
-            updateLockUI(startLevel, LOCK_SECONDS);
+            updateLockUI(startLevel);
             lockStart = Date.now();
             document.getElementById('lockTimer').textContent = LOCK_SECONDS;
           }
@@ -770,11 +723,9 @@
       }, 200);
     }
 
-    function updateLockUI(level, seconds) {
-      document.getElementById('lockLabel').textContent = getLockLabel(level);
-      document.getElementById('lockHint').textContent = seconds + ' 秒后解锁此页';
-      document.getElementById('lockTimer').textContent = seconds;
-      document.getElementById('lockPreview').innerHTML = getLockPreview(level);
+    function updateLockUI(level) {
+      document.getElementById('lockHint').textContent = getLockHint(level);
+      document.getElementById('lockTimer').textContent = LOCK_SECONDS;
       updateProgressBars();
     }
 
@@ -801,7 +752,6 @@
       updateHeader(tab);
       if (tab === 'home') renderCalendar();
       if (tab === 'hourly') renderHourly();
-      updateTabLockStyles();
     }
 
     function updateTabLockStyles() {
@@ -824,11 +774,9 @@
       unlockLevel = 0;
       updateProgressBars();
       updateTabLockStyles();
-      // 初始显示首页锁
       showLockOverlay('home');
     }
 
-    // 页面刷新时清理
     window.addEventListener('beforeunload', clearLockInterval);
 
     // ============ 原则数据 ============
